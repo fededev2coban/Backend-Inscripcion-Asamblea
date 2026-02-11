@@ -1,55 +1,70 @@
 const express = require('express');
 const router = express.Router();
-const eventoController = require('../controllers/eventoController');
+const eventoController = require('../controllers/eventoControllerUpdated');
 const { eventoValidation } = require('../middleware/validators/eventoValidator');
+const { authMiddleware } = require('../middleware/auth');
 
 /**
  * @route   GET /api/eventos
  * @desc    Obtener todos los eventos
- * @access  Public
+ * @access  Private
  */
-router.get('/', eventoController.getAll);
+router.get('/', authMiddleware, eventoController.getAll);
 
 /**
  * @route   GET /api/eventos/activos
  * @desc    Obtener eventos activos
- * @access  Public
+ * @access  Private
  */
-router.get('/activos', eventoController.getActive);
+router.get('/activos', authMiddleware, eventoController.getActive);
 
 /**
  * @route   GET /api/eventos/proximos
  * @desc    Obtener eventos próximos
- * @access  Public
+ * @access  Private
  */
-router.get('/proximos', eventoController.getUpcoming);
+router.get('/proximos', authMiddleware, eventoController.getUpcoming);
 
 /**
  * @route   GET /api/eventos/:id
  * @desc    Obtener evento por ID
- * @access  Public
+ * @access  Private
  */
-router.get('/:id', eventoValidation.getById, eventoController.getById);
+router.get('/:id', authMiddleware, eventoValidation.getById, eventoController.getById);
 
 /**
  * @route   POST /api/eventos
  * @desc    Crear nuevo evento
- * @access  Public
+ * @access  Private
  */
-router.post('/', eventoValidation.create, eventoController.create);
+router.post('/', authMiddleware, eventoValidation.create, eventoController.create);
+
+/**
+ * @route   POST /api/eventos/:id/publicar
+ * @desc    Publicar evento y generar link público
+ * @access  Private
+ */
+router.post('/:id/publicar', authMiddleware, eventoValidation.getById, eventoController.publish);
+
+/**
+ * @route   POST /api/eventos/:id/despublicar
+ * @desc    Despublicar evento
+ * @access  Private
+ */
+router.post('/:id/despublicar', authMiddleware, eventoValidation.getById, eventoController.unpublish);
 
 /**
  * @route   PUT /api/eventos/:id
  * @desc    Actualizar evento
- * @access  Public
+ * @access  Private
  */
-router.put('/:id', eventoValidation.update, eventoController.update);
+router.put('/:id', authMiddleware, eventoValidation.update, eventoController.update);
 
 /**
  * @route   DELETE /api/eventos/:id
  * @desc    Eliminar evento
- * @access  Public
+ * @access  Private
  */
-router.delete('/:id', eventoValidation.getById, eventoController.delete);
+router.delete('/:id', authMiddleware, eventoValidation.getById, eventoController.delete);
 
 module.exports = router;

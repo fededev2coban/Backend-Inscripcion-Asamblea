@@ -100,6 +100,7 @@ class EventoController {
       const { id } = req.params;
       const { nombre_evento, estado_evento, fecha_evento, lugar_evento, hora_evento } = req.body;
       const pool = await getConnection();
+      const horaData = new Date(`1970-01-01T${hora_evento}Z`);
 
       // Verificar que existe
       const checkResult = await pool.request()
@@ -133,7 +134,7 @@ class EventoController {
         updates.push('lugar_evento = @lugar_evento');
       }
       if (hora_evento !== undefined) {
-        request.input('hora_evento', sql.Time, hora_evento);
+        request.input('hora_evento', sql.Time, horaData);
         updates.push('hora_evento = @hora_evento');
       }
 
