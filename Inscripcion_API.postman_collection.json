@@ -1,0 +1,456 @@
+{
+  "info": {
+    "name": "Sistema de Inscripción a Eventos",
+    "description": "API para gestionar inscripciones de personas a eventos",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Cooperativas",
+      "item": [
+        {
+          "name": "Obtener todas las cooperativas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/cooperativas",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cooperativas"]
+            }
+          }
+        },
+        {
+          "name": "Obtener cooperativas activas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/cooperativas/activas",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cooperativas", "activas"]
+            }
+          }
+        },
+        {
+          "name": "Obtener cooperativa por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/cooperativas/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cooperativas", "1"]
+            }
+          }
+        },
+        {
+          "name": "Crear cooperativa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name_cooperativa\": \"Cooperativa San Marcos\",\n  \"afiliado\": 1,\n  \"estado\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/cooperativas",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cooperativas"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar cooperativa",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name_cooperativa\": \"Cooperativa San Marcos Actualizada\",\n  \"estado\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/cooperativas/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cooperativas", "1"]
+            }
+          }
+        },
+        {
+          "name": "Eliminar cooperativa",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/cooperativas/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cooperativas", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Eventos",
+      "item": [
+        {
+          "name": "Obtener todos los eventos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/eventos",
+              "host": ["{{base_url}}"],
+              "path": ["api", "eventos"]
+            }
+          }
+        },
+        {
+          "name": "Obtener eventos activos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/eventos/activos",
+              "host": ["{{base_url}}"],
+              "path": ["api", "eventos", "activos"]
+            }
+          }
+        },
+        {
+          "name": "Obtener eventos próximos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/eventos/proximos",
+              "host": ["{{base_url}}"],
+              "path": ["api", "eventos", "proximos"]
+            }
+          }
+        },
+        {
+          "name": "Obtener evento por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/eventos/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "eventos", "1"]
+            }
+          }
+        },
+        {
+          "name": "Crear evento",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre_evento\": \"Asamblea General 2026\",\n  \"estado_evento\": 1,\n  \"fecha_evento\": \"2026-03-15\",\n  \"lugar_evento\": \"Salón Principal - Centro de Convenciones\",\n  \"hora_evento\": \"09:00:00\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/eventos",
+              "host": ["{{base_url}}"],
+              "path": ["api", "eventos"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar evento",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fecha_evento\": \"2026-03-16\",\n  \"hora_evento\": \"10:00:00\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/eventos/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "eventos", "1"]
+            }
+          }
+        },
+        {
+          "name": "Eliminar evento",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/eventos/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "eventos", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Personas",
+      "item": [
+        {
+          "name": "Obtener todas las personas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/personas",
+              "host": ["{{base_url}}"],
+              "path": ["api", "personas"]
+            }
+          }
+        },
+        {
+          "name": "Obtener persona por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/personas/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "personas", "1"]
+            }
+          }
+        },
+        {
+          "name": "Buscar persona por DPI",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/personas/dpi/2987654321098",
+              "host": ["{{base_url}}"],
+              "path": ["api", "personas", "dpi", "2987654321098"]
+            }
+          }
+        },
+        {
+          "name": "Obtener personas de cooperativa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/personas/cooperativa/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "personas", "cooperativa", "1"]
+            }
+          }
+        },
+        {
+          "name": "Crear persona con cooperativa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombres\": \"María Elena\",\n  \"apellidos\": \"Rodríguez Pérez\",\n  \"email\": \"maria.rodriguez@email.com\",\n  \"dpi\": 2987654321098,\n  \"telefono\": 55443322,\n  \"id_cooperativa\": 1,\n  \"puesto\": \"Gerente General\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/personas",
+              "host": ["{{base_url}}"],
+              "path": ["api", "personas"]
+            }
+          }
+        },
+        {
+          "name": "Crear persona sin cooperativa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombres\": \"Carlos Alberto\",\n  \"apellidos\": \"Martínez López\",\n  \"email\": \"carlos.martinez@email.com\",\n  \"dpi\": 1234567890123,\n  \"telefono\": 12345678,\n  \"institucion\": \"Ministerio de Agricultura\",\n  \"puesto\": \"Director de Proyectos\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/personas",
+              "host": ["{{base_url}}"],
+              "path": ["api", "personas"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar persona",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nuevo.email@email.com\",\n  \"telefono\": 87654321,\n  \"puesto\": \"Directora Ejecutiva\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/personas/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "personas", "1"]
+            }
+          }
+        },
+        {
+          "name": "Eliminar persona",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/personas/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "personas", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Registros de Eventos",
+      "item": [
+        {
+          "name": "Obtener todos los registros",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/registros",
+              "host": ["{{base_url}}"],
+              "path": ["api", "registros"]
+            }
+          }
+        },
+        {
+          "name": "Obtener registro por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/registros/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "registros", "1"]
+            }
+          }
+        },
+        {
+          "name": "Obtener registros de evento",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/registros/evento/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "registros", "evento", "1"]
+            }
+          }
+        },
+        {
+          "name": "Obtener estadísticas de evento",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/registros/evento/1/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "registros", "evento", "1", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Obtener registros de persona",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/registros/persona/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "registros", "persona", "1"]
+            }
+          }
+        },
+        {
+          "name": "Inscribir persona a evento",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_evento\": 1,\n  \"id_persona\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/registros",
+              "host": ["{{base_url}}"],
+              "path": ["api", "registros"]
+            }
+          }
+        },
+        {
+          "name": "Cancelar inscripción",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/registros/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "registros", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/health",
+          "host": ["{{base_url}}"],
+          "path": ["api", "health"]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ]
+}

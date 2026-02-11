@@ -1,11 +1,24 @@
-"use strict";
+const express = require('express');
+const router = express.Router();
 
-module.exports.register = async server => {
-   server.route( {
-       method: "GET",
-       path: "/",
-       handler: async ( request, h ) => {
-           return "My first hapi server!";
-       }
-   } );
-};
+const cooperativaRoutes = require('./cooperativaRoutes');
+const eventoRoutes = require('./eventoRoutes');
+const personaRoutes = require('./personaRoutes');
+const registroEventoRoutes = require('./registroEventoRoutes');
+
+// Rutas base
+router.use('/cooperativas', cooperativaRoutes);
+router.use('/eventos', eventoRoutes);
+router.use('/personas', personaRoutes);
+router.use('/registros', registroEventoRoutes);
+
+// Ruta de health check
+router.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    message: 'API funcionando correctamente',
+    timestamp: new Date().toISOString()
+  });
+});
+
+module.exports = router;
