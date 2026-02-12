@@ -8,7 +8,7 @@ const authRoutes = require('./authRoutes');
 
 // Rutas protegidas (requieren autenticación)
 const cooperativaRoutes = require('./cooperativaRoutes');
-const eventoRoutes = require('./eventoRoutesUpdated');
+const eventoRoutes = require('./eventoRoutes');
 const personaRoutes = require('./personaRoutes');
 const registroEventoRoutes = require('./registroEventoRoutes');
 
