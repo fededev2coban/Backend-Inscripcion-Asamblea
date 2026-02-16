@@ -212,34 +212,100 @@ class RegistroEventoController {
   }
 
   // Obtener registros por evento
-  async getByEvento(req, res, next) {
+   async getByEvento(req, res, next) {
     try {
-      const { id_evento } = req.params;
+      const { id } = req.params;
       const pool = await getConnection();
-      const result = await pool.request()
-        .input('id_evento', sql.Int, id_evento)
+
+      // Obtener inscritos internos
+      const internosResult = await pool.request()
+        .input('id_evento', sql.Int, id)
         .query(`
           SELECT 
-            re.*,
+            re.id_registro_evento,
+            p.id_persona,
             p.nombres,
             p.apellidos,
             p.email,
             p.dpi,
             p.telefono,
-            p.puesto,
-            p.institucion,
-            c.name_cooperativa
+            c.name_cooperativa,
+            com.name_comision,
+            pu.name_puesto,
+            re.createdAt
           FROM registro_evento re
-          INNER JOIN persona p ON re.id_persona = p.id_persona
-          LEFT JOIN cooperativa c ON p.id_cooperativa = c.id_cooperativa
-          WHERE re.id_evento = @id_evento
+          INNER JOIN registro_internos ri ON re.id_interno = ri.id_interno
+          INNER JOIN persona p ON ri.id_persona = p.id_persona
+          INNER JOIN cooperativa c ON ri.id_cooperativa = c.id_cooperativa
+          INNER JOIN comision com ON ri.id_comision = com.id_comision
+          INNER JOIN puesto pu ON ri.id_puesto = pu.id_puesto
+          WHERE re.id_evento = @id_evento AND re.id_interno IS NOT NULL
           ORDER BY p.apellidos, p.nombres
         `);
-      
+
+      // Obtener inscritos externos
+      const externosResult = await pool.request()
+        .input('id_evento', sql.Int, id)
+        .query(`
+          SELECT 
+            re.id_registro_evento,
+            p.id_persona,
+            p.nombres,
+            p.apellidos,
+            p.email,
+            p.dpi,
+            p.telefono,
+            rex.institucion,
+            rex.puesto,
+            re.createdAt
+          FROM registro_evento re
+          INNER JOIN registro_externo rex ON re.id_externo = rex.id_externo
+          INNER JOIN persona p ON rex.id_persona = p.id_persona
+          WHERE re.id_evento = @id_evento AND re.id_externo IS NOT NULL
+          ORDER BY p.apellidos, p.nombres
+        `);
+
+      const totalResult = await pool.request()
+        .input('id_evento', sql.Int, id)
+        .query(`
+          SELECT 
+            re.id_registro_evento,
+            p.id_persona,
+            p.nombres,
+            p.apellidos,
+            p.email,
+            p.dpi,
+            p.telefono,
+            -- Datos de Externos (serán NULL si es interno)
+            rex.institucion,
+            rex.puesto AS puesto_externo,
+            -- Datos de Internos (serán NULL si es externo)
+            c.name_cooperativa,
+            com.name_comision,
+            pu.name_puesto AS puesto_interno,
+            re.createdAt
+        FROM registro_evento re
+        -- Usamos LEFT JOIN para que no descarte registros si falta alguna relación
+        LEFT JOIN registro_externo rex ON re.id_externo = rex.id_externo
+        LEFT JOIN registro_internos ri ON re.id_interno = ri.id_interno
+        -- Unimos a persona buscando el ID ya sea del externo o del interno
+        INNER JOIN persona p ON (rex.id_persona = p.id_persona OR ri.id_persona = p.id_persona)
+        -- Joins adicionales para internos
+        LEFT JOIN cooperativa c ON ri.id_cooperativa = c.id_cooperativa
+        LEFT JOIN comision com ON ri.id_comision = com.id_comision
+        LEFT JOIN puesto pu ON ri.id_puesto = pu.id_puesto
+        WHERE re.id_evento = @id_evento
+        ORDER BY p.apellidos, p.nombres;
+        `);
+
       res.json({
         success: true,
-        data: result.recordset,
-        count: result.recordset.length
+        data: {
+          internos: internosResult.recordset,
+          externos: externosResult.recordset,
+          inscritostotal: totalResult.recordset,
+          total: internosResult.recordset.length + externosResult.recordset.length
+        }
       });
     } catch (error) {
       next(error);
@@ -277,44 +343,77 @@ class RegistroEventoController {
     }
   }
 
-  // Obtener estadísticas de un evento
+  // Obtener estadísticas del evento
   async getEventoStats(req, res, next) {
     try {
-      const { id_evento } = req.params;
+      const { id } = req.params;
       const pool = await getConnection();
-      
-      const result = await pool.request()
-        .input('id_evento', sql.Int, id_evento)
+
+      // Total de inscritos
+      const totalResult = await pool.request()
+        .input('id_evento', sql.Int, id)
         .query(`
-          SELECT 
-            COUNT(*) as total_inscritos,
-            COUNT(DISTINCT p.id_cooperativa) as total_cooperativas,
-            COUNT(CASE WHEN p.id_cooperativa IS NOT NULL THEN 1 END) as inscritos_con_cooperativa,
-            COUNT(CASE WHEN p.id_cooperativa IS NULL THEN 1 END) as inscritos_sin_cooperativa
-          FROM registro_evento re
-          INNER JOIN persona p ON re.id_persona = p.id_persona
-          WHERE re.id_evento = @id_evento
+          SELECT COUNT(*) as total
+          FROM registro_evento
+          WHERE id_evento = @id_evento
         `);
 
-      const cooperativasResult = await pool.request()
-        .input('id_evento', sql.Int, id_evento)
+      // Total internos
+      const internosResult = await pool.request()
+        .input('id_evento', sql.Int, id)
+        .query(`
+          SELECT COUNT(*) as total
+          FROM registro_evento
+          WHERE id_evento = @id_evento AND id_interno IS NOT NULL
+        `);
+
+      // Total externos
+      const externosResult = await pool.request()
+        .input('id_evento', sql.Int, id)
+        .query(`
+          SELECT COUNT(*) as total
+          FROM registro_evento
+          WHERE id_evento = @id_evento AND id_externo IS NOT NULL
+        `);
+
+      // Por cooperativa
+      const porCooperativaResult = await pool.request()
+        .input('id_evento', sql.Int, id)
         .query(`
           SELECT 
-            c.name_cooperativa,
+            c.name_cooperativa as cooperativa,
             COUNT(*) as cantidad
           FROM registro_evento re
-          INNER JOIN persona p ON re.id_persona = p.id_persona
-          INNER JOIN cooperativa c ON p.id_cooperativa = c.id_cooperativa
+          INNER JOIN registro_internos ri ON re.id_interno = ri.id_interno
+          INNER JOIN cooperativa c ON ri.id_cooperativa = c.id_cooperativa
           WHERE re.id_evento = @id_evento
           GROUP BY c.name_cooperativa
+          ORDER BY cantidad DESC
+        `);
+
+      // Por comisión
+      const porComisionResult = await pool.request()
+        .input('id_evento', sql.Int, id)
+        .query(`
+          SELECT 
+            com.name_comision as comision,
+            COUNT(*) as cantidad
+          FROM registro_evento re
+          INNER JOIN registro_internos ri ON re.id_interno = ri.id_interno
+          INNER JOIN comision com ON ri.id_comision = com.id_comision
+          WHERE re.id_evento = @id_evento
+          GROUP BY com.name_comision
           ORDER BY cantidad DESC
         `);
 
       res.json({
         success: true,
         data: {
-          estadisticas: result.recordset[0],
-          por_cooperativa: cooperativasResult.recordset
+          total_inscritos: totalResult.recordset[0].total,
+          total_internos: internosResult.recordset[0].total,
+          total_externos: externosResult.recordset[0].total,
+          por_cooperativa: porCooperativaResult.recordset,
+          por_comision: porComisionResult.recordset
         }
       });
     } catch (error) {

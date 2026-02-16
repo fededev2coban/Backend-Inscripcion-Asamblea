@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const registroEventoController = require('../controllers/registroEventoController');
 const { registroEventoValidation } = require('../middleware/validators/registroEventoValidator');
-
+const { authMiddleware } = require('../middleware/auth');
 /**
  * @route   GET /api/registros
  * @desc    Obtener todos los registros
@@ -22,14 +22,14 @@ router.get('/:id', registroEventoValidation.getById, registroEventoController.ge
  * @desc    Obtener registros de un evento
  * @access  Public
  */
-router.get('/evento/:id_evento', registroEventoValidation.getByEvento, registroEventoController.getByEvento);
+router.get('/evento/:id', authMiddleware, registroEventoController.getByEvento);
 
 /**
  * @route   GET /api/registros/evento/:id_evento/stats
  * @desc    Obtener estadísticas de un evento
  * @access  Public
  */
-router.get('/evento/:id_evento/stats', registroEventoValidation.getByEvento, registroEventoController.getEventoStats);
+router.get('/evento/:id/stats', authMiddleware, registroEventoController.getEventoStats);
 
 /**
  * @route   GET /api/registros/persona/:id_persona
@@ -50,6 +50,6 @@ router.post('/', registroEventoValidation.create, registroEventoController.creat
  * @desc    Eliminar registro (cancelar inscripción)
  * @access  Public
  */
-router.delete('/:id', registroEventoValidation.getById, registroEventoController.delete);
+router.delete('/:id', authMiddleware, registroEventoController.delete);
 
 module.exports = router;

@@ -115,44 +115,25 @@ class EventoController {
     try {
       const { nombre_evento, estado_evento, fecha_evento, lugar_evento, hora_evento } = req.body;
       const pool = await getConnection();
-      
-      const maxIdResult = await pool.request()
-        .query('SELECT ISNULL(MAX(id_evento), 0) + 1 as nextId FROM evento');
-      const nextId = maxIdResult.recordset[0].nextId;
+
+      const horaFormateada = hora_evento.split(':').length === 2 
+        ? `${hora_evento}:00` 
+        : hora_evento;
 
       await pool.request()
-        .input('id_evento', sql.Int, nextId)
         .input('nombre_evento', sql.VarChar(100), nombre_evento)
         .input('estado_evento', sql.Int, estado_evento)
         .input('fecha_evento', sql.Date, fecha_evento)
         .input('lugar_evento', sql.VarChar(100), lugar_evento)
-        .input('hora_evento', sql.Time, hora_evento)
+        .input('hora_evento', sql.VarChar(8), horaFormateada)
         .query(`
-          INSERT INTO evento (id_evento, nombre_evento, estado_evento, fecha_evento, lugar_evento, hora_evento, publicado, createdAt)
-          VALUES (@id_evento, CAST(@nombre_evento AS VARBINARY(100)), @estado_evento, @fecha_evento, @lugar_evento, @hora_evento, 0, GETDATE())
-        `);
-
-      const result = await pool.request()
-        .input('id', sql.Int, nextId)
-        .query(`
-          SELECT 
-            id_evento,
-            CAST(nombre_evento AS VARCHAR(100)) as nombre_evento,
-            estado_evento,
-            fecha_evento,
-            lugar_evento,
-            CAST(hora_evento AS VARCHAR(20)) as hora_evento,
-            publicado,
-            link_publico,
-            createdAt
-          FROM evento 
-          WHERE id_evento = @id
+          INSERT INTO evento (nombre_evento, estado_evento, fecha_evento, lugar_evento, hora_evento, publicado)
+          VALUES (@nombre_evento, @estado_evento, @fecha_evento, @lugar_evento, @hora_evento, 0)
         `);
 
       res.status(201).json({
         success: true,
         message: 'Evento creado exitosamente',
-        data: result.recordset[0]
       });
     } catch (error) {
       next(error);
@@ -270,6 +251,10 @@ class EventoController {
         });
       }
 
+      const horaFormateada = hora_evento.split(':').length === 2 
+        ? `${hora_evento}:00` 
+        : hora_evento;
+
       const request = pool.request().input('id', sql.Int, id);
       const updates = [];
 
@@ -290,7 +275,7 @@ class EventoController {
         updates.push('lugar_evento = @lugar_evento');
       }
       if (hora_evento !== undefined) {
-        request.input('hora_evento', sql.Time, hora_evento);
+        request.input('hora_evento', sql.VarChar(8), horaFormateada);
         updates.push('hora_evento = @hora_evento');
       }
 
@@ -307,11 +292,11 @@ class EventoController {
         .query(`
           SELECT 
             id_evento,
-            CAST(nombre_evento AS VARCHAR(100)) as nombre_evento,
+            nombre_evento,
             estado_evento,
             fecha_evento,
             lugar_evento,
-            CAST(hora_evento AS VARCHAR(20)) as hora_evento,
+            hora_evento,
             publicado,
             link_publico,
             createdAt

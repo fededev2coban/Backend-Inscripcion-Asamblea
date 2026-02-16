@@ -24,8 +24,10 @@ app.get('/', (req, res) => {
     version: '1.0.0',
     endpoints: {
       cooperativas: '/api/cooperativas',
+      roles: '/api/roles',
       eventos: '/api/eventos',
       personas: '/api/personas',
+      usuarios: '/api/usuarios',
       registros: '/api/registros',
       health: '/api/health'
     }
