@@ -269,33 +269,29 @@ class RegistroEventoController {
         .input('id_evento', sql.Int, id)
         .query(`
           SELECT 
-            re.id_registro_evento,
-            p.id_persona,
-            p.nombres,
-            p.apellidos,
-            p.email,
-            p.dpi,
-            p.telefono,
-            -- Datos de Externos (serán NULL si es interno)
-            rex.institucion,
-            rex.puesto AS puesto_externo,
-            -- Datos de Internos (serán NULL si es externo)
-            c.name_cooperativa,
-            com.name_comision,
-            pu.name_puesto AS puesto_interno,
-            re.createdAt
-        FROM registro_evento re
-        -- Usamos LEFT JOIN para que no descarte registros si falta alguna relación
-        LEFT JOIN registro_externo rex ON re.id_externo = rex.id_externo
-        LEFT JOIN registro_internos ri ON re.id_interno = ri.id_interno
-        -- Unimos a persona buscando el ID ya sea del externo o del interno
-        INNER JOIN persona p ON (rex.id_persona = p.id_persona OR ri.id_persona = p.id_persona)
-        -- Joins adicionales para internos
-        LEFT JOIN cooperativa c ON ri.id_cooperativa = c.id_cooperativa
-        LEFT JOIN comision com ON ri.id_comision = com.id_comision
-        LEFT JOIN puesto pu ON ri.id_puesto = pu.id_puesto
-        WHERE re.id_evento = @id_evento
-        ORDER BY p.apellidos, p.nombres;
+              re.id_registro_evento,
+              p.id_persona,
+              p.nombres,
+              p.apellidos,
+              p.email,
+              p.dpi,
+              p.telefono,
+              -- Fusionamos Institución y Cooperativa
+              COALESCE(rex.institucion, c.name_cooperativa) AS Institucion,
+              -- Fusionamos los dos tipos de puestos
+              COALESCE(rex.puesto, pu.name_puesto) AS Puesto,
+              -- La comisión solo existe para internos (será NULL para externos)
+              ISNULL(com.name_comision, 'N/A') AS Comision,
+              re.createdAt
+          FROM registro_evento re
+          LEFT JOIN registro_externo rex ON re.id_externo = rex.id_externo
+          LEFT JOIN registro_internos ri ON re.id_interno = ri.id_interno
+          INNER JOIN persona p ON (rex.id_persona = p.id_persona OR ri.id_persona = p.id_persona)
+          LEFT JOIN cooperativa c ON ri.id_cooperativa = c.id_cooperativa
+          LEFT JOIN comision com ON ri.id_comision = com.id_comision
+          LEFT JOIN puesto pu ON ri.id_puesto = pu.id_puesto
+          WHERE re.id_evento = @id_evento
+          ORDER BY p.apellidos, p.nombres;
         `);
 
       res.json({
