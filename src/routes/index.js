@@ -14,6 +14,8 @@ const personaRoutes = require('./personaRoutes');
 const usuarioRoutes = require('./usuarioRoutes');
 const rolRoutes = require('./rolRoutes');
 const registroEventoRoutes = require('./registroEventoRoutes');
+const asistenciaRoutes = require('./asistenciaRoutes');
+const reporteRoutes = require('./reporteRoutes');
 
 // ===== RUTAS PÚBLICAS =====
 router.use('/public', publicRoutes);
@@ -28,6 +30,8 @@ router.use('/personas', authMiddleware, personaRoutes);
 router.use('/usuarios', authMiddleware, usuarioRoutes);
 router.use('/roles', authMiddleware, rolRoutes);
 router.use('/registros', authMiddleware, registroEventoRoutes);
+router.use('/asistencia', asistenciaRoutes);
+router.use('/reportes', reporteRoutes);
 
 // Ruta de health check (pública)
 router.get('/health', (req, res) => {
