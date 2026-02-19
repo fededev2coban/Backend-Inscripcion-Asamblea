@@ -1,17 +1,18 @@
 const { getConnection, sql } = require('../config/database');
 
-class PersonaController {
+class UsuarioController {
   // Obtener todas las personas
-  // 1. Obtener todas las personas con su información de procedencia
   async getAll(req, res, next) {
     try {
       const pool = await getConnection();
       const result = await pool.request()
         .query(`
           SELECT 
-          
-          * FROM persona 
-
+            u.*,
+            r.rolname
+          FROM usuario u
+          LEFT JOIN rol r ON u.id_rol = r.id_rol
+          ORDER BY u.id_usuario ASC
         `);
       
       res.json({
@@ -33,11 +34,12 @@ class PersonaController {
         .input('id', sql.Int, id)
         .query(`
           SELECT 
-            p.*,
-            c.name_cooperativa
-          FROM persona p
-          LEFT JOIN cooperativa c ON p.id_cooperativa = c.id_cooperativa
-          WHERE p.id_persona = @id
+            u.*,
+            r.rolname
+          FROM usuario u
+          LEFT JOIN rol r ON u.id_rol = r.id_rol
+          ORDER BY u.id_usuario ASC
+          WHERE u.id_usuario = @id
         `);
       
       if (result.recordset.length === 0) {
@@ -61,7 +63,7 @@ class PersonaController {
   try {
     const { 
       nombres, apellidos, email, dpi, telefono, 
-      id_cooperativa, institucion, puesto 
+      id_rol, institucion, puesto 
     } = req.body;
     
     const pool = await getConnection();
@@ -86,13 +88,13 @@ class PersonaController {
       .input('email', sql.VarChar(100), email || null)
       .input('dpi', sql.BigInt, dpi)
       .input('telefono', sql.VarChar(20), telefono || null) // Teléfono mejor como VarChar
-      .input('id_cooperativa', sql.Int, id_cooperativa || null)
+      .input('id_rol', sql.Int, id_rol || null)
       .input('institucion', sql.VarChar(100), institucion || null)
       .input('puesto', sql.VarChar(50), puesto);
 
     const insertResult = await insertRequest.query(`
-      INSERT INTO persona (nombres, apellidos, email, dpi, telefono, id_cooperativa, institucion, puesto)
-      VALUES (@nombres, @apellidos, @email, @dpi, @telefono, @id_cooperativa, @institucion, @puesto);
+      INSERT INTO persona (nombres, apellidos, email, dpi, telefono, id_rol, institucion, puesto)
+      VALUES (@nombres, @apellidos, @email, @dpi, @telefono, @id_rol, @institucion, @puesto);
       
       SELECT SCOPE_IDENTITY() AS id; -- Obtiene el ID que se acaba de generar
     `);
@@ -105,7 +107,7 @@ class PersonaController {
       .query(`
         SELECT p.*, c.name_cooperativa
         FROM persona p
-        LEFT JOIN cooperativa c ON p.id_cooperativa = c.id_cooperativa
+        LEFT JOIN cooperativa c ON p.id_rol = c.id_rol
         WHERE p.id_persona = @id
       `);
 
@@ -130,7 +132,7 @@ class PersonaController {
         email, 
         dpi, 
         telefono, 
-        id_cooperativa, 
+        id_rol, 
         institucion, 
         puesto 
       } = req.body;
@@ -187,9 +189,9 @@ class PersonaController {
         request.input('telefono', sql.Int, telefono);
         updates.push('telefono = @telefono');
       }
-      if (id_cooperativa !== undefined) {
-        request.input('id_cooperativa', sql.Int, id_cooperativa);
-        updates.push('id_cooperativa = @id_cooperativa');
+      if (id_rol !== undefined) {
+        request.input('id_rol', sql.Int, id_rol);
+        updates.push('id_rol = @id_rol');
       }
       if (institucion !== undefined) {
         request.input('institucion', sql.VarChar(100), institucion);
@@ -215,7 +217,7 @@ class PersonaController {
             p.*,
             c.name_cooperativa
           FROM persona p
-          LEFT JOIN cooperativa c ON p.id_cooperativa = c.id_cooperativa
+          LEFT JOIN cooperativa c ON p.id_rol = c.id_rol
           WHERE p.id_persona = @id
         `);
 
@@ -272,7 +274,7 @@ class PersonaController {
             p.*,
             c.name_cooperativa
           FROM persona p
-          LEFT JOIN cooperativa c ON p.id_cooperativa = c.id_cooperativa
+          LEFT JOIN cooperativa c ON p.id_rol = c.id_rol
           WHERE p.dpi = @dpi
         `);
       
@@ -292,21 +294,21 @@ class PersonaController {
     }
   }
 
-  // Obtener personas por cooperativa
-  async getByCooperativa(req, res, next) {
+  // Obtener usuarios por roles
+  async getByRol(req, res, next) {
     try {
-      const { id_cooperativa } = req.params;
+      const { id_rol } = req.params;
       const pool = await getConnection();
       const result = await pool.request()
-        .input('id_cooperativa', sql.Int, id_cooperativa)
+        .input('id_rol', sql.Int, id_rol)
         .query(`
           SELECT 
-            p.*,
-            c.name_cooperativa
-          FROM persona p
-          LEFT JOIN cooperativa c ON p.id_cooperativa = c.id_cooperativa
-          WHERE p.id_cooperativa = @id_cooperativa
-          ORDER BY p.apellidos, p.nombres
+            u.*,
+            r.rolname
+          FROM usuario u
+          LEFT JOIN rol c ON u.id_rol = r.id_rol
+          WHERE u.id_rol = @id_rol
+          ORDER BY c.username
         `);
       
       res.json({
@@ -320,4 +322,4 @@ class PersonaController {
   }
 }
 
-module.exports = new PersonaController();
+module.exports = new UsuarioController();

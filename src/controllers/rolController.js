@@ -1,12 +1,12 @@
 const { getConnection, sql } = require('../config/database');
 
-class CooperativaController {
-  // Obtener todas las cooperativas
+class RolController {
+  // Obtener todas las rol
   async getAll(req, res, next) {
     try {
       const pool = await getConnection();
       const result = await pool.request()
-        .query('SELECT * FROM cooperativa ORDER BY id_cooperativa ASC');
+        .query('SELECT * FROM rol ORDER BY id_rol ASC');
       
       res.json({
         success: true,
@@ -25,12 +25,12 @@ class CooperativaController {
       const pool = await getConnection();
       const result = await pool.request()
         .input('id', sql.Int, id)
-        .query('SELECT * FROM cooperativa WHERE id_cooperativa = @id');
+        .query('SELECT * FROM rol WHERE id_rol = @id');
       
       if (result.recordset.length === 0) {
         return res.status(404).json({
           success: false,
-          error: 'Cooperativa no encontrada'
+          error: 'Rol no encontrada'
         });
       }
 
@@ -46,17 +46,17 @@ class CooperativaController {
   // Crear nueva cooperativa
   async create(req, res, next) {
     try {
-      const { name_cooperativa, afiliado = 1, estado = 1 } = req.body;
+      const { rolname, afiliado = 1, estado = 1 } = req.body;
       const pool = await getConnection();
       
       const result = await pool.request()
         
-        .input('name_cooperativa', sql.VarChar(50), name_cooperativa)
+        .input('rolname', sql.VarChar(50), rolname)
         .input('afiliado', sql.Int, afiliado)
         .input('estado', sql.Int, estado)
         .query(`
-          INSERT INTO cooperativa (name_cooperativa, afiliado, estado)
-          VALUES (@name_cooperativa, @afiliado, @estado);
+          INSERT INTO cooperativa (rolname, afiliado, estado)
+          VALUES (@rolname, @afiliado, @estado);
         `);
 
       res.status(201).json({
@@ -73,13 +73,13 @@ class CooperativaController {
   async update(req, res, next) {
     try {
       const { id } = req.params;
-      const { name_cooperativa, afiliado, estado } = req.body;
+      const { rolname, afiliado, estado } = req.body;
       const pool = await getConnection();
 
       // Verificar que existe
       const checkResult = await pool.request()
         .input('id', sql.Int, id)
-        .query('SELECT id_cooperativa FROM cooperativa WHERE id_cooperativa = @id');
+        .query('SELECT id_rol FROM rol WHERE id_rol = @id');
 
       if (checkResult.recordset.length === 0) {
         return res.status(404).json({
@@ -91,9 +91,9 @@ class CooperativaController {
       const request = pool.request().input('id', sql.Int, id);
       const updates = [];
 
-      if (name_cooperativa !== undefined) {
-        request.input('name_cooperativa', sql.VarChar(50), name_cooperativa);
-        updates.push('name_cooperativa = @name_cooperativa');
+      if (rolname !== undefined) {
+        request.input('rolname', sql.VarChar(50), rolname);
+        updates.push('rolname = @rolname');
       }
       if (afiliado !== undefined) {
         request.input('afiliado', sql.Int, afiliado);
@@ -109,12 +109,12 @@ class CooperativaController {
       await request.query(`
         UPDATE cooperativa 
         SET ${updates.join(', ')}
-        WHERE id_cooperativa = @id
+        WHERE id_rol = @id
       `);
 
       const result = await pool.request()
         .input('id', sql.Int, id)
-        .query('SELECT * FROM cooperativa WHERE id_cooperativa = @id');
+        .query('SELECT * FROM rol WHERE id_rol = @id');
 
       res.json({
         success: true,
@@ -135,7 +135,7 @@ class CooperativaController {
       // Verificar que existe
       const checkResult = await pool.request()
         .input('id', sql.Int, id)
-        .query('SELECT id_cooperativa FROM cooperativa WHERE id_cooperativa = @id');
+        .query('SELECT id_rol FROM rol WHERE id_rol = @id');
 
       if (checkResult.recordset.length === 0) {
         return res.status(404).json({
@@ -146,7 +146,7 @@ class CooperativaController {
 
       await pool.request()
         .input('id', sql.Int, id)
-        .query('DELETE FROM cooperativa WHERE id_cooperativa = @id');
+        .query('DELETE FROM rol WHERE id_rol = @id');
 
       res.json({
         success: true,
@@ -162,7 +162,7 @@ class CooperativaController {
     try {
       const pool = await getConnection();
       const result = await pool.request()
-        .query('SELECT * FROM cooperativa WHERE estado = 1 ORDER BY name_cooperativa');
+        .query('SELECT * FROM rol WHERE estado = 1 ORDER BY rolname');
       
       res.json({
         success: true,
@@ -175,4 +175,4 @@ class CooperativaController {
   }
 }
 
-module.exports = new CooperativaController();
+module.exports = new RolController();
