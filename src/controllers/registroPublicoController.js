@@ -1,4 +1,4 @@
-const { getConnection, sql } = require('../config/database');
+const { query } = require('../config/database');
 
 class RegistroPublicoController {
   // Registrar persona a evento (interno o externo)
@@ -21,74 +21,58 @@ class RegistroPublicoController {
         puesto
       } = req.body;
 
-      const pool = await getConnection();
-
       // 1. Verificar que el evento existe y está publicado
-      const eventoResult = await pool.request()
-        .input('link', sql.VarChar(100), link)
-        .query(`
-          SELECT id_evento, nombre_evento
-          FROM evento 
-          WHERE link_publico = @link AND publicado = 1 AND estado_evento = 1
-        `);
+      const eventoResult = await query(
+        `SELECT id_evento, nombre_evento
+         FROM evento 
+         WHERE link_publico = $1 AND publicado = 1 AND estado_evento = 1`,
+        [link]
+      );
 
-      if (eventoResult.recordset.length === 0) {
+      if (eventoResult.rows.length === 0) {
         return res.status(404).json({
           success: false,
           error: 'Evento no encontrado o no disponible para registro'
         });
       }
 
-      const evento = eventoResult.recordset[0];
+      const evento = eventoResult.rows[0];
 
       // 2. Buscar o crear persona por DPI
-      let personaResult = await pool.request()
-        .input('dpi', sql.BigInt, dpi)
-        .query('SELECT id_persona FROM persona WHERE dpi = @dpi');
+      let personaResult = await query(
+        'SELECT id_persona FROM persona WHERE dpi = $1',
+        [dpi]
+      );
 
       let idPersona;
       let nuevoPersona = false;
 
-      if (personaResult.recordset.length > 0) {
+      if (personaResult.rows.length > 0) {
         // Persona ya existe
-        idPersona = personaResult.recordset[0].id_persona;
+        idPersona = personaResult.rows[0].id_persona;
         
         // Actualizar datos de la persona
-        await pool.request()
-          .input('id', sql.Int, idPersona)
-          .input('nombres', sql.VarChar(50), nombres)
-          .input('apellidos', sql.VarChar(50), apellidos)
-          .input('email', sql.VarChar(100), email || null)
-          .input('telefono', sql.VarChar(20), telefono || null)
-          .query(`
-            UPDATE persona 
-            SET nombres = @nombres,
-                apellidos = @apellidos,
-                email = @email,
-                telefono = @telefono,
-                updatedAt = GETDATE()
-            WHERE id_persona = @id
-          `);
+        await query(
+          `UPDATE persona 
+           SET nombres = $1,
+               apellidos = $2,
+               email = $3,
+               telefono = $4,
+               updatedat = CURRENT_TIMESTAMP
+           WHERE id_persona = $5`,
+          [nombres, apellidos, email || null, telefono || null, idPersona]
+        );
       } else {
         // Crear nueva persona
         nuevoPersona = true;
-        await pool.request()
-          .input('nombres', sql.VarChar(50), nombres)
-          .input('apellidos', sql.VarChar(50), apellidos)
-          .input('email', sql.VarChar(100), email || null)
-          .input('dpi', sql.BigInt, dpi)
-          .input('telefono', sql.VarChar(20), telefono || null)
-          .query(`
-            INSERT INTO persona (nombres, apellidos, email, dpi, telefono, createdAt, updatedAt)
-            VALUES (@nombres, @apellidos, @email, @dpi, @telefono, GETDATE(), GETDATE())
-          `);
-
-        // Obtener el ID de la persona recién creada
-        personaResult = await pool.request()
-          .input('dpi', sql.BigInt, dpi)
-          .query('SELECT id_persona FROM persona WHERE dpi = @dpi');
+        const newPersona = await query(
+          `INSERT INTO persona (nombres, apellidos, email, dpi, telefono, createdat, updatedat)
+           VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+           RETURNING id_persona`,
+          [nombres, apellidos, email || null, dpi, telefono || null]
+        );
         
-        idPersona = personaResult.recordset[0].id_persona;
+        idPersona = newPersona.rows[0].id_persona;
       }
 
       // 3. Procesar según tipo de registro
@@ -99,21 +83,17 @@ class RegistroPublicoController {
         // REGISTRO INTERNO
         
         // Validar que no exista la misma combinación
-        const duplicadoInterno = await pool.request()
-          .input('id_persona', sql.Int, idPersona)
-          .input('id_cooperativa', sql.Int, id_cooperativa)
-          .input('id_puesto', sql.Int, id_puesto)
-          .input('id_comision', sql.Int, id_comision)
-          .query(`
-            SELECT id_interno 
-            FROM registro_internos 
-            WHERE id_persona = @id_persona 
-              AND id_cooperativa = @id_cooperativa 
-              AND id_puesto = @id_puesto
-              AND id_comision = @id_comision
-          `);
+        const duplicadoInterno = await query(
+          `SELECT id_interno 
+           FROM registro_internos 
+           WHERE id_persona = $1 
+             AND id_cooperativa = $2 
+             AND id_puesto = $3
+             AND id_comision = $4`,
+          [idPersona, id_cooperativa, id_puesto, id_comision]
+        );
 
-        if (duplicadoInterno.recordset.length > 0) {
+        if (duplicadoInterno.rows.length > 0) {
           return res.status(400).json({
             success: false,
             error: 'Ya estás registrado con esta cooperativa, comisión y puesto'
@@ -121,46 +101,25 @@ class RegistroPublicoController {
         }
 
         // Crear registro interno
-        await pool.request()
-          .input('id_persona', sql.Int, idPersona)
-          .input('id_cooperativa', sql.Int, id_cooperativa)
-          .input('id_puesto', sql.Int, id_puesto)
-          .input('id_comision', sql.Int, id_comision)
-          .query(`
-            INSERT INTO registro_internos (id_persona, id_cooperativa, id_puesto, id_comision, createdAt, updatedAt)
-            VALUES (@id_persona, @id_cooperativa, @id_puesto, @id_comision, GETDATE(), GETDATE())
-          `);
+        const nuevoInterno = await query(
+          `INSERT INTO registro_internos (id_persona, id_cooperativa, id_puesto, id_comision, createdat, updatedat)
+           VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+           RETURNING id_interno`,
+          [idPersona, id_cooperativa, id_puesto, id_comision]
+        );
 
-        // Obtener el ID del registro interno recién creado
-        const internoResult = await pool.request()
-          .input('id_persona', sql.Int, idPersona)
-          .input('id_cooperativa', sql.Int, id_cooperativa)
-          .input('id_puesto', sql.Int, id_puesto)
-          .input('id_comision', sql.Int, id_comision)
-          .query(`
-            SELECT TOP 1 id_interno 
-            FROM registro_internos 
-            WHERE id_persona = @id_persona 
-              AND id_cooperativa = @id_cooperativa 
-              AND id_puesto = @id_puesto
-              AND id_comision = @id_comision
-            ORDER BY createdAt DESC
-          `);
-
-        idRegistro = internoResult.recordset[0].id_interno;
+        idRegistro = nuevoInterno.rows[0].id_interno;
         tipoRegistro = 'interno';
 
         // Verificar si ya está inscrito al evento con este registro interno
-        const yaInscritoInterno = await pool.request()
-          .input('id_evento', sql.Int, evento.id_evento)
-          .input('id_interno', sql.Int, idRegistro)
-          .query(`
-            SELECT id_registro_evento 
-            FROM registro_evento 
-            WHERE id_evento = @id_evento AND id_interno = @id_interno
-          `);
+        const yaInscritoInterno = await query(
+          `SELECT id_registro_evento 
+           FROM registro_evento 
+           WHERE id_evento = $1 AND id_interno = $2`,
+          [evento.id_evento, idRegistro]
+        );
 
-        if (yaInscritoInterno.recordset.length > 0) {
+        if (yaInscritoInterno.rows.length > 0) {
           return res.status(400).json({
             success: false,
             error: 'Ya estás inscrito a este evento con este registro'
@@ -168,31 +127,26 @@ class RegistroPublicoController {
         }
 
         // Crear registro de evento
-        await pool.request()
-          .input('id_evento', sql.Int, evento.id_evento)
-          .input('id_interno', sql.Int, idRegistro)
-          .query(`
-            INSERT INTO registro_evento (id_evento, id_interno, id_externo, createdAt, updatedAt)
-            VALUES (@id_evento, @id_interno, NULL, GETDATE(), GETDATE())
-          `);
+        await query(
+          `INSERT INTO registro_evento (id_evento, id_interno, id_externo, createdat, updatedat)
+           VALUES ($1, $2, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+          [evento.id_evento, idRegistro]
+        );
 
       } else if (tipo_registro === 'externo') {
         // REGISTRO EXTERNO
         
         // Validar que no exista la misma combinación
-        const duplicadoExterno = await pool.request()
-          .input('id_persona', sql.Int, idPersona)
-          .input('institucion', sql.VarChar(50), institucion)
-          .input('puesto', sql.VarChar(50), puesto)
-          .query(`
-            SELECT id_externo 
-            FROM registro_externo 
-            WHERE id_persona = @id_persona 
-              AND institucion = @institucion 
-              AND puesto = @puesto
-          `);
+        const duplicadoExterno = await query(
+          `SELECT id_externo 
+           FROM registro_externo 
+           WHERE id_persona = $1 
+             AND institucion = $2 
+             AND puesto = $3`,
+          [idPersona, institucion, puesto]
+        );
 
-        if (duplicadoExterno.recordset.length > 0) {
+        if (duplicadoExterno.rows.length > 0) {
           return res.status(400).json({
             success: false,
             error: 'Ya estás registrado con esta institución y puesto'
@@ -200,43 +154,25 @@ class RegistroPublicoController {
         }
 
         // Crear registro externo
-        await pool.request()
-          .input('id_persona', sql.Int, idPersona)
-          .input('institucion', sql.VarChar(50), institucion)
-          .input('puesto', sql.VarChar(50), puesto)
-          .query(`
-            INSERT INTO registro_externo (id_persona, institucion, puesto, createdAt, updatedAt)
-            VALUES (@id_persona, @institucion, @puesto, GETDATE(), GETDATE())
-          `);
+        const nuevoExterno = await query(
+          `INSERT INTO registro_externo (id_persona, institucion, puesto, createdat, updatedat)
+           VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+           RETURNING id_externo`,
+          [idPersona, institucion, puesto]
+        );
 
-        // Obtener el ID del registro externo recién creado
-        const externoResult = await pool.request()
-          .input('id_persona', sql.Int, idPersona)
-          .input('institucion', sql.VarChar(50), institucion)
-          .input('puesto', sql.VarChar(50), puesto)
-          .query(`
-            SELECT TOP 1 id_externo 
-            FROM registro_externo 
-            WHERE id_persona = @id_persona 
-              AND institucion = @institucion 
-              AND puesto = @puesto
-            ORDER BY createdAt DESC
-          `);
-
-        idRegistro = externoResult.recordset[0].id_externo;
+        idRegistro = nuevoExterno.rows[0].id_externo;
         tipoRegistro = 'externo';
 
         // Verificar si ya está inscrito al evento con este registro externo
-        const yaInscritoExterno = await pool.request()
-          .input('id_evento', sql.Int, evento.id_evento)
-          .input('id_externo', sql.Int, idRegistro)
-          .query(`
-            SELECT id_registro_evento 
-            FROM registro_evento 
-            WHERE id_evento = @id_evento AND id_externo = @id_externo
-          `);
+        const yaInscritoExterno = await query(
+          `SELECT id_registro_evento 
+           FROM registro_evento 
+           WHERE id_evento = $1 AND id_externo = $2`,
+          [evento.id_evento, idRegistro]
+        );
 
-        if (yaInscritoExterno.recordset.length > 0) {
+        if (yaInscritoExterno.rows.length > 0) {
           return res.status(400).json({
             success: false,
             error: 'Ya estás inscrito a este evento con este registro'
@@ -244,13 +180,11 @@ class RegistroPublicoController {
         }
 
         // Crear registro de evento
-        await pool.request()
-          .input('id_evento', sql.Int, evento.id_evento)
-          .input('id_externo', sql.Int, idRegistro)
-          .query(`
-            INSERT INTO registro_evento (id_evento, id_interno, id_externo, createdAt, updatedAt)
-            VALUES (@id_evento, NULL, @id_externo, GETDATE(), GETDATE())
-          `);
+        await query(
+          `INSERT INTO registro_evento (id_evento, id_interno, id_externo, createdat, updatedat)
+           VALUES ($1, NULL, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+          [evento.id_evento, idRegistro]
+        );
       } else {
         return res.status(400).json({
           success: false,
@@ -276,14 +210,85 @@ class RegistroPublicoController {
   // Obtener cooperativas activas para el formulario público
   async getCooperativasActivas(req, res, next) {
     try {
-      const pool = await getConnection();
-      const result = await pool.request()
-        .query('SELECT id_cooperativa, name_cooperativa FROM cooperativa WHERE estado = 1 ORDER BY name_cooperativa');
+      const result = await query(
+        'SELECT id_cooperativa, name_cooperativa FROM cooperativa WHERE estado = 1 ORDER BY name_cooperativa'
+      );
       
       res.json({
         success: true,
-        data: result.recordset
+        data: result.rows
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Métodos adicionales útiles para el registro público
+
+  // Verificar si una persona ya está registrada en un evento
+  async verificarRegistro(req, res, next) {
+    try {
+      const { link } = req.params;
+      const { dpi } = req.query;
+
+      // Obtener evento por link
+      const eventoResult = await query(
+        'SELECT id_evento FROM evento WHERE link_publico = $1 AND publicado = true',
+        [link]
+      );
+
+      if (eventoResult.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Evento no encontrado'
+        });
+      }
+
+      const idEvento = eventoResult.rows[0].id_evento;
+
+      // Buscar persona por DPI
+      const personaResult = await query(
+        'SELECT id_persona FROM persona WHERE dpi = $1',
+        [dpi]
+      );
+
+      if (personaResult.rows.length === 0) {
+        return res.json({
+          success: true,
+          data: {
+            registrado: false,
+            message: 'Persona no encontrada'
+          }
+        });
+      }
+
+      const idPersona = personaResult.rows[0].id_persona;
+
+      // Verificar si tiene registros en el evento
+      const registrosResult = await query(
+        `SELECT 
+          re.id_registro_evento,
+          CASE 
+            WHEN re.id_interno IS NOT NULL THEN 'interno'
+            ELSE 'externo'
+          END as tipo_registro
+         FROM registro_evento re
+         LEFT JOIN registro_internos ri ON re.id_interno = ri.id_interno
+         LEFT JOIN registro_externo rex ON re.id_externo = rex.id_externo
+         WHERE re.id_evento = $1 
+           AND (ri.id_persona = $2 OR rex.id_persona = $2)`,
+        [idEvento, idPersona]
+      );
+
+      res.json({
+        success: true,
+        data: {
+          registrado: registrosResult.rows.length > 0,
+          cantidad_registros: registrosResult.rows.length,
+          registros: registrosResult.rows
+        }
+      });
+
     } catch (error) {
       next(error);
     }

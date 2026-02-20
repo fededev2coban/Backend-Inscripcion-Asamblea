@@ -1,4 +1,4 @@
-const { getConnection, sql } = require('../config/database');
+const { query } = require('../config/database');
 
 class AsistenciaController {
   // Marcar asistencia de un participante
@@ -8,59 +8,45 @@ class AsistenciaController {
       const { estado_asistencia, notas } = req.body;
       const id_usuario = req.user.id; // Del token JWT
 
-      const pool = await getConnection();
-
       // Validar que el registro existe
-      const checkResult = await pool.request()
-        .input('id', sql.Int, id)
-        .query('SELECT id_registro_evento, estado_asistencia FROM registro_evento WHERE id_registro_evento = @id');
+      const checkResult = await query(
+        'SELECT id_registro_evento, estado_asistencia FROM registro_evento WHERE id_registro_evento = $1',
+        [id]
+      );
 
-      if (checkResult.recordset.length === 0) {
+      if (checkResult.rows.length === 0) {
         return res.status(404).json({
           success: false,
           error: 'Registro no encontrado'
         });
       }
 
-      const estadoAnterior = checkResult.recordset[0].estado_asistencia;
+      const estadoAnterior = checkResult.rows[0].estado_asistencia;
 
       // Actualizar registro
-      await pool.request()
-        .input('id', sql.Int, id)
-        .input('estado', sql.VarChar(20), estado_asistencia)
-        .input('id_usuario', sql.Int, id_usuario)
-        .input('notas', sql.VarChar(500), notas || null)
-        .query(`
-          UPDATE registro_evento
-          SET estado_asistencia = @estado,
-              fecha_asistencia = CASE 
-                WHEN @estado = 'asistio' THEN GETDATE()
-                ELSE fecha_asistencia
-              END,
-              id_usuario_asistencia = @id_usuario,
-              notas = @notas,
-              updatedAt = GETDATE()
-          WHERE id_registro_evento = @id
-        `);
+      await query(
+        `UPDATE registro_evento
+         SET estado_asistencia = $1,
+             fecha_asistencia = CASE 
+               WHEN $1 = 'asistio' THEN CURRENT_TIMESTAMP
+               ELSE fecha_asistencia
+             END,
+             id_usuario_asistencia = $2,
+             notas = $3,
+             updatedat = CURRENT_TIMESTAMP
+         WHERE id_registro_evento = $4`,
+        [estado_asistencia, id_usuario, notas || null, id]
+      );
 
       // Registrar en bitácora
-      await pool.request()
-        .input('id_registro', sql.Int, id)
-        .input('accion', sql.VarChar(50), 'marca_asistencia')
-        .input('estado_anterior', sql.VarChar(20), estadoAnterior)
-        .input('estado_nuevo', sql.VarChar(20), estado_asistencia)
-        .input('id_usuario', sql.Int, id_usuario)
-        .input('observaciones', sql.VarChar(500), notas || null)
-        .query(`
-          INSERT INTO bitacora_asistencia (
+      await query(
+        `INSERT INTO bitacora_asistencia (
             id_registro_evento, accion, estado_anterior, estado_nuevo, 
             id_usuario, fecha_accion, observaciones
           )
-          VALUES (
-            @id_registro, @accion, @estado_anterior, @estado_nuevo,
-            @id_usuario, GETDATE(), @observaciones
-          )
-        `);
+          VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6)`,
+        [id, 'marca_asistencia', estadoAnterior, estado_asistencia, id_usuario, notas || null]
+      );
 
       res.json({
         success: true,
@@ -81,41 +67,39 @@ class AsistenciaController {
     try {
       const { id_evento } = req.params;
 
-      const pool = await getConnection();
-
-      const result = await pool.request()
-        .input('id_evento', sql.Int, id_evento)
-        .query(`
-          SELECT * FROM vw_reporte_asistencia
-          WHERE id_evento = @id_evento
-          ORDER BY 
-            CASE estado_asistencia
-              WHEN 'asistio' THEN 1
-              WHEN 'registrado' THEN 2
-              WHEN 'no_asistio' THEN 3
-            END,
-            apellidos, nombres
-        `);
+      const result = await query(
+        `SELECT * FROM vw_reporte_asistencia
+         WHERE id_evento = $1
+         ORDER BY 
+           CASE estado_asistencia
+             WHEN 'asistio' THEN 1
+             WHEN 'registrado' THEN 2
+             WHEN 'no_asistio' THEN 3
+           END,
+           apellidos, nombres`,
+        [id_evento]
+      );
 
       // Separar por estado
-      const asistieron = result.recordset.filter(r => r.estado_asistencia === 'asistio');
-      const registrados = result.recordset.filter(r => r.estado_asistencia === 'registrado');
-      const noAsistieron = result.recordset.filter(r => r.estado_asistencia === 'no_asistio');
+      const rows = result.rows;
+      const asistieron = rows.filter(r => r.estado_asistencia === 'asistio');
+      const registrados = rows.filter(r => r.estado_asistencia === 'registrado');
+      const noAsistieron = rows.filter(r => r.estado_asistencia === 'no_asistio');
 
       res.json({
         success: true,
         data: {
-          total: result.recordset.length,
+          total: rows.length,
           asistieron: asistieron,
           registrados: registrados,
           no_asistieron: noAsistieron,
           estadisticas: {
-            total_registrados: result.recordset.length,
+            total_registrados: rows.length,
             total_asistieron: asistieron.length,
             total_no_asistieron: noAsistieron.length,
             total_pendientes: registrados.length,
-            porcentaje_asistencia: result.recordset.length > 0 
-              ? ((asistieron.length / result.recordset.length) * 100).toFixed(2)
+            porcentaje_asistencia: rows.length > 0 
+              ? ((asistieron.length / rows.length) * 100).toFixed(2)
               : 0
           }
         }
@@ -131,37 +115,46 @@ class AsistenciaController {
       const { registros, estado_asistencia } = req.body; // array de ids
       const id_usuario = req.user.id;
 
-      const pool = await getConnection();
-
       let actualizados = 0;
 
-      for (const id of registros) {
-        await pool.request()
-          .input('id', sql.Int, id)
-          .input('estado', sql.VarChar(20), estado_asistencia)
-          .input('id_usuario', sql.Int, id_usuario)
-          .query(`
-            UPDATE registro_evento
-            SET estado_asistencia = @estado,
-                fecha_asistencia = CASE 
-                  WHEN @estado = 'asistio' THEN GETDATE()
-                  ELSE fecha_asistencia
-                END,
-                id_usuario_asistencia = @id_usuario,
-                updatedAt = GETDATE()
-            WHERE id_registro_evento = @id
-          `);
-        
-        actualizados++;
-      }
+      // Usamos una transacción para asegurar que todos se actualicen o ninguno
+      const client = await getClient();
+      
+      try {
+        await client.query('BEGIN');
 
-      res.json({
-        success: true,
-        message: `${actualizados} registros actualizados`,
-        data: {
-          total_actualizados: actualizados
+        for (const id of registros) {
+          await client.query(
+            `UPDATE registro_evento
+             SET estado_asistencia = $1,
+                 fecha_asistencia = CASE 
+                   WHEN $1 = 'asistio' THEN CURRENT_TIMESTAMP
+                   ELSE fecha_asistencia
+                 END,
+                 id_usuario_asistencia = $2,
+                 updatedat = CURRENT_TIMESTAMP
+             WHERE id_registro_evento = $3`,
+            [estado_asistencia, id_usuario, id]
+          );
+          
+          actualizados++;
         }
-      });
+
+        await client.query('COMMIT');
+        
+        res.json({
+          success: true,
+          message: `${actualizados} registros actualizados`,
+          data: {
+            total_actualizados: actualizados
+          }
+        });
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
     } catch (error) {
       next(error);
     }
@@ -172,23 +165,20 @@ class AsistenciaController {
     try {
       const { id } = req.params;
 
-      const pool = await getConnection();
-
-      const result = await pool.request()
-        .input('id', sql.Int, id)
-        .query(`
-          SELECT 
+      const result = await query(
+        `SELECT 
             b.*,
             u.nombre_completo AS usuario
           FROM bitacora_asistencia b
           LEFT JOIN usuario u ON b.id_usuario = u.id_usuario
-          WHERE b.id_registro_evento = @id
-          ORDER BY b.fecha_accion DESC
-        `);
+          WHERE b.id_registro_evento = $1
+          ORDER BY b.fecha_accion DESC`,
+        [id]
+      );
 
       res.json({
         success: true,
-        data: result.recordset
+        data: result.rows
       });
     } catch (error) {
       next(error);
