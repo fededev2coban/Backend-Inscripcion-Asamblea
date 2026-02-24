@@ -61,15 +61,11 @@ class RolController {
         });
       }
 
-      // Obtener el siguiente ID disponible (ya que tu tabla no usa SERIAL)
-      const maxIdResult = await query('SELECT COALESCE(MAX(id_rol), 0) + 1 as next_id FROM rol');
-      const nextId = maxIdResult.rows[0].next_id;
-
       const result = await query(
-        `INSERT INTO rol (id_rol, rolname, estado, createdat, updatedat)
-         VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-         RETURNING *`,
-        [nextId, rolname, estado]
+        `INSERT INTO rol (rolname, estado, createdat, updatedat)
+        VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        RETURNING *`,
+        [rolname, estado]
       );
 
       res.status(201).json({

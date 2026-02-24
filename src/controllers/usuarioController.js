@@ -97,7 +97,7 @@ class UsuarioController {
       const insertResult = await query(`
         INSERT INTO usuario (
           username,
-          password_hash,
+          password,
           nombre_completo,
           estado,
           id_rol,
