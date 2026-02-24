@@ -9,7 +9,7 @@ const pool = new Pool({
   database: process.env.DB_DATABASE || 'Asamblea3',
   max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 5000,
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });
 
