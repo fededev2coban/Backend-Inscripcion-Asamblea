@@ -22,7 +22,7 @@ router.get('/:id', personaValidation.getById, usuarioController.getById);
  * @desc    Buscar persona por DPI
  * @access  Public
  */
-router.get('/dpi/:dpi', usuarioController.searchByDpi);
+// router.get('/dpi/:dpi', usuarioController.searchByDpi);
 
 /**
  * @route   GET /api/usuarios/cooperativa/:id_cooperativa
