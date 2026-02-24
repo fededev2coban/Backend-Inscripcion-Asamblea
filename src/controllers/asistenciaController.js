@@ -26,15 +26,15 @@ class AsistenciaController {
       // Actualizar registro
       await query(
         `UPDATE registro_evento
-         SET estado_asistencia = $1,
+         SET estado_asistencia = $1::VARCHAR(20),
              fecha_asistencia = CASE 
                WHEN $1 = 'asistio' THEN CURRENT_TIMESTAMP
                ELSE fecha_asistencia
              END,
-             id_usuario_asistencia = $2,
+             id_usuario_asistencia = $2::INTEGER,
              notas = $3,
              updatedat = CURRENT_TIMESTAMP
-         WHERE id_registro_evento = $4`,
+         WHERE id_registro_evento = $4::INTEGER`,
         [estado_asistencia, id_usuario, notas || null, id]
       );
 
