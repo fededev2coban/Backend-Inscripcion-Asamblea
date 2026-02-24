@@ -197,7 +197,7 @@ class UsuarioController {
       if (password !== undefined && password !== '') {
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
-        updates.push(`password_hash = $${paramCount}`);
+        updates.push(`password = $${paramCount}`);
         values.push(passwordHash);
         paramCount++;
       }
