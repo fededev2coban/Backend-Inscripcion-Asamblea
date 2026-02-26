@@ -80,8 +80,8 @@ class PDFService {
     doc.moveDown(1);
   }
 
-static _escribirTabla(doc, participantes) {
-    const colPositions = [50, 80, 190, 290, 410, 510];
+  static _escribirTabla(doc, participantes) {
+    const colPositions = [50, 80, 190, 260, 410, 510];
     const colWidths = [30, 110, 100, 120, 100, 70];
     let y = doc.y;
 
@@ -96,7 +96,7 @@ static _escribirTabla(doc, participantes) {
     y = drawHeader(y);
 
     participantes.forEach((p, i) => {
-      const rowHeight = 25;
+      const rowHeight = 35;
 
       if (y > 680) { // Bajamos un poco el límite para que no choque con el pie
         doc.addPage();
@@ -123,7 +123,7 @@ static _escribirTabla(doc, participantes) {
     });
   }
 
-static _escribirPieDePagina(doc) {
+  static _escribirPieDePagina(doc) {
     const range = doc.bufferedPageRange(); // Obtiene el total de páginas generadas
     
     for (let i = range.start; i < (range.start + range.count); i++) {
