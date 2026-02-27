@@ -81,8 +81,8 @@ class PDFService {
   }
 
 static _escribirTabla(doc, participantes) {
-    const colPositions = [50, 80, 190, 290, 410, 510];
-    const colWidths = [30, 110, 100, 120, 100, 70];
+    const colPositions = [50, 80, 190, 260, 410, 510];
+    const colWidths = [30, 110, 100, 140, 100, 70];
     let y = doc.y;
 
     const drawHeader = (posY) => {
@@ -96,7 +96,7 @@ static _escribirTabla(doc, participantes) {
     y = drawHeader(y);
 
     participantes.forEach((p, i) => {
-      const rowHeight = 25;
+      const rowHeight = 35;
 
       if (y > 680) { // Bajamos un poco el límite para que no choque con el pie
         doc.addPage();
@@ -117,7 +117,7 @@ static _escribirTabla(doc, participantes) {
       doc.text(institucion || '-', colPositions[3], y + 8, { width: colWidths[3] });
       doc.text(cargo || '-', colPositions[4], y + 8, { width: colWidths[4] });
 
-      doc.moveTo(colPositions[5], y + 20).lineTo(colPositions[5] + 65, y + 20).strokeColor('#BBBBBB').lineWidth(0.5).stroke();
+      doc.moveTo(colPositions[5], y + 30).lineTo(colPositions[5] + 65, y + 30).strokeColor('#BBBBBB').lineWidth(0.5).stroke();
       
       y += rowHeight;
     });
