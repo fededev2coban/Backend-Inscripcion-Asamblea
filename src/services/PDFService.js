@@ -41,8 +41,8 @@ class PDFService {
   static _insertarLogo(doc) {
     try {
       // Ajusta esta ruta según la ubicación real de tu archivo
-      const logoPath = path.join(__dirname, '..', 'assets', 'img', 'logo', 'logotipo.png');
-      doc.image(logoPath, 50, 40, { width: 50 });
+      const logoPath = path.join(__dirname, '..', 'assets', 'img', 'logo', 'new-logo-sp.png');
+      doc.image(logoPath, 50, 40, { width: 100 });
     } catch (err) {
       console.warn("Imagen no encontrada, continuando sin logo...");
     }
