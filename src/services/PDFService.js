@@ -7,7 +7,7 @@ class PDFService {
       try {
         const doc = new PDFDocument({ 
           size: 'LETTER', 
-          margins: { top: 50, bottom: 50, left: 50, right: 50 }, 
+          margins: { top: 35, bottom: 50, left: 50, right: 50 }, 
           bufferPages: true 
         });
 
@@ -41,8 +41,8 @@ class PDFService {
   static _insertarLogo(doc) {
     try {
       // Ajusta esta ruta según la ubicación real de tu archivo
-      const logoPath = path.join(__dirname, '..', 'assets', 'img', 'logo', 'new-logo-sp.png');
-      doc.image(logoPath, 50, 40, { width: 100 });
+      const logoPath = path.join(__dirname, '..', 'assets', 'img', 'logo', 'logotipo.png');
+      doc.image(logoPath, 50, 40, { width: 50 });
     } catch (err) {
       console.warn("Imagen no encontrada, continuando sin logo...");
     }
@@ -53,7 +53,7 @@ class PDFService {
     doc.fillColor('#003B7A')
        .font('Helvetica-Bold')
        .fontSize(20)
-       .text('FEDECOVERA', { align: 'center' });
+       .text('FEDECOVERA, R. L.', { align: 'center' });
 
     doc.fillColor('#333333')
        .fontSize(14)
@@ -81,14 +81,14 @@ class PDFService {
   }
 
 static _escribirTabla(doc, participantes) {
-    const colPositions = [50, 80, 190, 260, 410, 510];
-    const colWidths = [30, 110, 100, 140, 100, 70];
+    const colPositions = [50, 80, 190, 260, 400, 480];
+    const colWidths = [30, 110, 70, 140, 75, 90];
     let y = doc.y;
 
     const drawHeader = (posY) => {
       doc.rect(50, posY, 530, 22).fill('#003B7A');
       doc.fillColor('#FFFFFF').fontSize(9).font('Helvetica-Bold');
-      const headers = ['No.', 'Nombre Completo', 'DPI', 'Institución', 'Cargo', 'Firma'];
+      const headers = ['No.', 'Nombre Completo', 'DPI', 'Institución / Cooperativa', 'Cargo', 'Firma'];
       headers.forEach((h, i) => doc.text(h, colPositions[i], posY + 7, { width: colWidths[i], align: i === 0 ? 'center' : 'left' }));
       return posY + 22;
     };
@@ -96,7 +96,7 @@ static _escribirTabla(doc, participantes) {
     y = drawHeader(y);
 
     participantes.forEach((p, i) => {
-      const rowHeight = 35;
+      const rowHeight = 70;
 
       if (y > 680) { // Bajamos un poco el límite para que no choque con el pie
         doc.addPage();
@@ -108,7 +108,9 @@ static _escribirTabla(doc, participantes) {
       doc.fillColor('#000000').fontSize(8).font('Helvetica');
       
       const institucion = p.tipo_participante === 'interno' ? p.cooperativa : p.institucion;
-      const cargo = p.tipo_participante === 'interno' ? p.puesto_interno : p.puesto_externo;
+      const cargo = p.tipo_participante === 'interno' 
+    ? `${p.puesto_interno} - ${p.comision || ''}` // Agregamos la comisión aquí
+    : p.puesto_externo;
 
       // --- CAMBIO AQUÍ: Quitamos el .toUpperCase() ---
       doc.text(i + 1, colPositions[0], y + 8, { width: colWidths[0], align: 'center' });
@@ -117,7 +119,7 @@ static _escribirTabla(doc, participantes) {
       doc.text(institucion || '-', colPositions[3], y + 8, { width: colWidths[3] });
       doc.text(cargo || '-', colPositions[4], y + 8, { width: colWidths[4] });
 
-      doc.moveTo(colPositions[5], y + 30).lineTo(colPositions[5] + 65, y + 30).strokeColor('#BBBBBB').lineWidth(0.5).stroke();
+      doc.moveTo(colPositions[5], y + 65).lineTo(colPositions[5] + 95, y + 65).strokeColor('#BBBBBB').lineWidth(0.5).stroke();
       
       y += rowHeight;
     });
