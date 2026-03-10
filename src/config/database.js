@@ -13,7 +13,8 @@ const pool = new Pool({
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });
 
-pool.on('connect', () => {
+pool.on('connect', (client) => {
+  client.query(`SET TIME ZONE '${process.env.DB_TIMEZONE || 'America/Guatemala'}'`);
   console.log('✅ Conectado a PostgreSQL');
 });
 
