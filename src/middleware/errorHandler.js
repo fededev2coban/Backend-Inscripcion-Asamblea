@@ -1,6 +1,36 @@
 const errorHandler = (err, req, res, next) => {
   console.error('Error:', err);
 
+  // Error de PostgreSQL
+  if (err.code) {
+    // Violación de clave única
+    if (err.code === '23505') {
+      return res.status(400).json({
+        success: false,
+        error: 'El registro ya existe',
+        details: err.detail
+      });
+    }
+
+    // Violación de llave foránea
+    if (err.code === '23503') {
+      return res.status(400).json({
+        success: false,
+        error: 'Referencia inválida en la base de datos',
+        details: err.detail
+      });
+    }
+
+    // Violación de restricción
+    if (err.code === '23514') {
+      return res.status(400).json({
+        success: false,
+        error: 'Valor inválido según las restricciones',
+        details: err.detail
+      });
+    }
+  }
+
   // Error de validación
   if (err.name === 'ValidationError') {
     return res.status(400).json({

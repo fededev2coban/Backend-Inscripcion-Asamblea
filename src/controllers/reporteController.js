@@ -1,4 +1,4 @@
-const { getConnection, sql } = require('../config/database');
+const { query } = require('../config/database');
 const ExcelJS = require('exceljs');
 const PDFService = require('../services/PDFService');
 
@@ -7,32 +7,31 @@ class ReporteController {
   async generarExcel(req, res, next) {
     try {
       const { id_evento } = req.params;
-      const pool = await getConnection();
 
       // Obtener datos del evento
-      const eventoResult = await pool.request()
-        .input('id', sql.Int, id_evento)
-        .query('SELECT * FROM evento WHERE id_evento = @id');
+      const eventoResult = await query(
+        'SELECT * FROM evento WHERE id_evento = $1',
+        [id_evento]
+      );
 
-      if (eventoResult.recordset.length === 0) {
+      if (eventoResult.rows.length === 0) {
         return res.status(404).json({
           success: false,
           error: 'Evento no encontrado'
         });
       }
 
-      const evento = eventoResult.recordset[0];
+      const evento = eventoResult.rows[0];
 
       // Obtener participantes que asistieron
-      const participantesResult = await pool.request()
-        .input('id_evento', sql.Int, id_evento)
-        .query(`
-          SELECT * FROM vw_reporte_asistencia
-          WHERE id_evento = @id_evento AND estado_asistencia = 'asistio'
-          ORDER BY apellidos, nombres
-        `);
+      const participantesResult = await query(
+        `SELECT * FROM vw_reporte_asistencia
+         WHERE id_evento = $1 AND estado_asistencia = 'asistio'
+         ORDER BY apellidos, nombres`,
+        [id_evento]
+      );
 
-      const participantes = participantesResult.recordset;
+      const participantes = participantesResult.rows;
 
       // Crear workbook
       const workbook = new ExcelJS.Workbook();
@@ -155,38 +154,76 @@ class ReporteController {
 
   // Generar reporte PDF de asistencia
   async generarPDF(req, res, next) {
-      try {
-        const { id_evento } = req.params;
-        const pool = await getConnection();
+    try {
+      const { id_evento } = req.params;
 
-        // 1. Obtener el evento
-        const eventoResult = await pool.request()
-          .input('id', sql.Int, id_evento)
-          .query('SELECT * FROM evento WHERE id_evento = @id');
+      // 1. Obtener el evento
+      const eventoResult = await query(
+        'SELECT * FROM evento WHERE id_evento = $1',
+        [id_evento]
+      );
 
-        const evento = eventoResult.recordset[0];
-
-        // VALIDACIÓN: Si no hay evento, mandamos error antes de intentar hacer el PDF
-        if (!evento) {
-          return res.status(404).json({ success: false, error: 'Evento no encontrado' });
-        }
-
-        // 2. Obtener participantes
-        const participantesResult = await pool.request()
-          .input('id_evento', sql.Int, id_evento)
-          .query(`SELECT * FROM vw_reporte_asistencia WHERE id_evento = @id_evento AND estado_asistencia = 'asistio'`);
-        
-        const participantes = participantesResult.recordset;
-
-        // 3. ENVIAR AL SERVICIO DE PDF
-        // Aquí es donde sucede la magia: le pasamos 'res' y los datos
-        await PDFService.generarReporteAsistencia(res, evento, participantes);
-
-      } catch (error) {
-        console.error("Error detallado:", error);
-        next(error);
+      if (eventoResult.rows.length === 0) {
+        return res.status(404).json({ 
+          success: false, 
+          error: 'Evento no encontrado' 
+        });
       }
+
+      const evento = eventoResult.rows[0];
+
+      // 2. Obtener participantes que asistieron
+      const participantesResult = await query(
+        `SELECT * FROM vw_reporte_asistencia 
+         WHERE id_evento = $1 AND estado_asistencia = 'asistio'`,
+        [id_evento]
+      );
+      
+      const participantes = participantesResult.rows;
+
+      // 3. ENVIAR AL SERVICIO DE PDF
+      await PDFService.generarReporteAsistencia(res, evento, participantes);
+
+    } catch (error) {
+      console.error("Error detallado:", error);
+      next(error);
     }
+  }
+
+  // Método adicional útil: Generar reporte de estadísticas
+  async generarEstadisticas(req, res, next) {
+    try {
+      const { id_evento } = req.params;
+
+      const statsResult = await query(
+        `SELECT 
+          COUNT(*) as total_inscritos,
+          COUNT(CASE WHEN estado_asistencia = 'asistio' THEN 1 END) as total_asistieron,
+          COUNT(CASE WHEN estado_asistencia = 'no_asistio' THEN 1 END) as total_no_asistieron,
+          COUNT(CASE WHEN estado_asistencia = 'registrado' THEN 1 END) as total_pendientes,
+          COUNT(CASE WHEN tipo_participante = 'interno' THEN 1 END) as total_internos,
+          COUNT(CASE WHEN tipo_participante = 'externo' THEN 1 END) as total_externos
+         FROM vw_reporte_asistencia
+         WHERE id_evento = $1`,
+        [id_evento]
+      );
+
+      const stats = statsResult.rows[0];
+
+      res.json({
+        success: true,
+        data: {
+          ...stats,
+          porcentaje_asistencia: stats.total_inscritos > 0 
+            ? ((stats.total_asistieron / stats.total_inscritos) * 100).toFixed(2)
+            : 0
+        }
+      });
+
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new ReporteController();

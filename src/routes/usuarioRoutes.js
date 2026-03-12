@@ -1,55 +1,62 @@
 const express = require('express');
 const router = express.Router();
 const usuarioController = require('../controllers/usuarioController');
-const { personaValidation } = require('../middleware/validators/personaValidator');
+const { usuarioValidation } = require('../middleware/validators/usuarioValidator');
 
 /**
  * @route   GET /api/usuarios
- * @desc    Obtener todas las usuarios
- * @access  Public
+ * @desc    Obtener todos los usuarios
+ * @access  Private (requiere autenticación)
  */
 router.get('/', usuarioController.getAll);
 
 /**
  * @route   GET /api/usuarios/:id
- * @desc    Obtener persona por ID
- * @access  Public
+ * @desc    Obtener usuario por ID
+ * @access  Private
  */
-router.get('/:id', personaValidation.getById, usuarioController.getById);
+router.get('/:id', usuarioValidation.getById, usuarioController.getById);
 
 /**
- * @route   GET /api/usuarios/dpi/:dpi
- * @desc    Buscar persona por DPI
- * @access  Public
+ * @route   GET /api/usuarios/buscar/:username
+ * @desc    Buscar usuario por nombre de usuario
+ * @access  Private
  */
-router.get('/dpi/:dpi', usuarioController.searchByDpi);
+router.get('/buscar/:username', usuarioValidation.searchByUsername, usuarioController.searchByUsername);
 
 /**
- * @route   GET /api/usuarios/cooperativa/:id_cooperativa
- * @desc    Obtener usuarios de una cooperativa
- * @access  Public
+ * @route   GET /api/usuarios/rol/:id_rol
+ * @desc    Obtener usuarios por rol
+ * @access  Private
  */
-router.get('/rol/:id_rol', usuarioController.getByRol);
+router.get('/rol/:id_rol', usuarioValidation.getByRol, usuarioController.getByRol);
 
 /**
  * @route   POST /api/usuarios
- * @desc    Crear nueva persona
- * @access  Public
+ * @desc    Crear nuevo usuario
+ * @access  Private (solo administradores)
  */
-router.post('/', personaValidation.create, usuarioController.create);
+router.post('/', usuarioValidation.create, usuarioController.create);
 
 /**
  * @route   PUT /api/usuarios/:id
- * @desc    Actualizar persona
- * @access  Public
+ * @desc    Actualizar usuario
+ * @access  Private (solo administradores)
  */
-router.put('/:id', personaValidation.update, usuarioController.update);
+router.put('/:id', usuarioValidation.update, usuarioController.update);
+
+/**
+ * @route   PATCH /api/usuarios/:id/estado
+ * @desc    Activar/Desactivar usuario
+ * @access  Private (solo administradores)
+ */
+router.patch('/:id/estado', usuarioValidation.toggleEstado, usuarioController.toggleEstado);
 
 /**
  * @route   DELETE /api/usuarios/:id
- * @desc    Eliminar persona
- * @access  Public
+ * @desc    Eliminar usuario
+ * @access  Private (solo administradores)
  */
-router.delete('/:id', personaValidation.getById, usuarioController.delete);
+router.delete('/:id', usuarioValidation.delete, usuarioController.delete);
 
 module.exports = router;

@@ -3,9 +3,8 @@ const cors = require('cors');
 const morgan = require('morgan');
 require('dotenv').config();
 
-const { getConnection, closeConnection } = require('./config/database');
 const routes = require('./routes');
-const { errorHandler, notFound } = require('./middleware/errorHandler');
+const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,7 +16,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
 // Rutas
-app.get('/', (req, res) => {
+app.get('/api/health', (req, res) => {
   res.json({
     success: true,
     message: 'API de Sistema de Inscripción a Eventos',
@@ -37,44 +36,23 @@ app.get('/', (req, res) => {
 app.use('/api', routes);
 
 // Manejo de errores
-app.use(notFound);
 app.use(errorHandler);
 
 // Iniciar servidor
-const startServer = async () => {
-  try {
-    // Conectar a la base de datos
-    await getConnection();
-    
-    // Iniciar servidor
-    app.listen(PORT, () => {
-      console.log('=================================');
-      console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-      console.log(`🌍 Entorno: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`📡 URL: http://localhost:${PORT}`);
-      console.log(`📚 Documentación: http://localhost:${PORT}/api`);
-      console.log('=================================');
-    });
-  } catch (error) {
-    console.error('❌ Error al iniciar el servidor:', error);
-    process.exit(1);
-  }
-};
-
-// Manejo de cierre graceful
-process.on('SIGTERM', async () => {
-  console.log('\n⏳ SIGTERM recibido. Cerrando servidor...');
-  await closeConnection();
-  process.exit(0);
+app.listen(PORT, () => {
+  console.log(`
+  ╔══════════════════════════════════════════════════════════════╗
+  ║                                                              ║
+  ║     🚀 SERVIDOR INICIADO - ASAMBLEA BACKEND V3 🚀            ║
+  ║                                                              ║
+  ║     Puerto: ${PORT}                                             ║
+  ║     Entorno: ${process.env.NODE_ENV || 'development'}                                     ║
+  ║     URL: http://localhost:${PORT}                               ║
+  ║                                                              ║
+  ║     📚 Documentación: /api/health                            ║
+  ║                                                              ║
+  ╚══════════════════════════════════════════════════════════════╝
+  `);
 });
-
-process.on('SIGINT', async () => {
-  console.log('\n⏳ SIGINT recibido. Cerrando servidor...');
-  await closeConnection();
-  process.exit(0);
-});
-
-// Iniciar el servidor
-startServer();
 
 module.exports = app;

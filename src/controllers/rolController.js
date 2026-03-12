@@ -1,173 +1,235 @@
-const { getConnection, sql } = require('../config/database');
+const { query } = require('../config/database');
 
 class RolController {
-  // Obtener todas las rol
+  // Obtener todos los roles
   async getAll(req, res, next) {
     try {
-      const pool = await getConnection();
-      const result = await pool.request()
-        .query('SELECT * FROM rol ORDER BY id_rol ASC');
+      const result = await query(
+        'SELECT * FROM rol ORDER BY id_rol ASC'
+      );
       
       res.json({
         success: true,
-        data: result.recordset,
-        count: result.recordset.length
+        data: result.rows,
+        count: result.rows.length
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // Obtener cooperativa por ID
+  // Obtener rol por ID
   async getById(req, res, next) {
     try {
       const { id } = req.params;
-      const pool = await getConnection();
-      const result = await pool.request()
-        .input('id', sql.Int, id)
-        .query('SELECT * FROM rol WHERE id_rol = @id');
+      const result = await query(
+        'SELECT * FROM rol WHERE id_rol = $1',
+        [id]
+      );
       
-      if (result.recordset.length === 0) {
+      if (result.rows.length === 0) {
         return res.status(404).json({
           success: false,
-          error: 'Rol no encontrada'
+          error: 'Rol no encontrado'
         });
       }
 
       res.json({
         success: true,
-        data: result.recordset[0]
+        data: result.rows[0]
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // Crear nueva cooperativa
+  // Crear nuevo rol
   async create(req, res, next) {
     try {
-      const { rolname, afiliado = 1, estado = 1 } = req.body;
-      const pool = await getConnection();
+      const { rolname, estado = 1 } = req.body;
       
-      const result = await pool.request()
-        
-        .input('rolname', sql.VarChar(50), rolname)
-        .input('afiliado', sql.Int, afiliado)
-        .input('estado', sql.Int, estado)
-        .query(`
-          INSERT INTO cooperativa (rolname, afiliado, estado)
-          VALUES (@rolname, @afiliado, @estado);
-        `);
+      // Verificar si ya existe un rol con el mismo nombre
+      const checkResult = await query(
+        'SELECT id_rol FROM rol WHERE rolname = $1',
+        [rolname]
+      );
+
+      if (checkResult.rows.length > 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Ya existe un rol con ese nombre'
+        });
+      }
+
+      const result = await query(
+        `INSERT INTO rol (rolname, estado, createdat, updatedat)
+        VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        RETURNING *`,
+        [rolname, estado]
+      );
 
       res.status(201).json({
         success: true,
-        message: 'Cooperativa creada exitosamente',
-
+        message: 'Rol creado exitosamente',
+        data: result.rows[0]
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // Actualizar cooperativa
+  // Actualizar rol
   async update(req, res, next) {
     try {
       const { id } = req.params;
-      const { rolname, afiliado, estado } = req.body;
-      const pool = await getConnection();
+      const { rolname, estado } = req.body;
 
       // Verificar que existe
-      const checkResult = await pool.request()
-        .input('id', sql.Int, id)
-        .query('SELECT id_rol FROM rol WHERE id_rol = @id');
+      const checkResult = await query(
+        'SELECT id_rol FROM rol WHERE id_rol = $1',
+        [id]
+      );
 
-      if (checkResult.recordset.length === 0) {
+      if (checkResult.rows.length === 0) {
         return res.status(404).json({
           success: false,
-          error: 'Cooperativa no encontrada'
+          error: 'Rol no encontrado'
         });
       }
 
-      const request = pool.request().input('id', sql.Int, id);
+      // Si se actualiza el nombre, verificar que no exista otro rol con ese nombre
+      if (rolname !== undefined) {
+        const nameCheck = await query(
+          'SELECT id_rol FROM rol WHERE rolname = $1 AND id_rol != $2',
+          [rolname, id]
+        );
+
+        if (nameCheck.rows.length > 0) {
+          return res.status(400).json({
+            success: false,
+            error: 'Ya existe otro rol con ese nombre'
+          });
+        }
+      }
+
+      // Construir query dinámica
       const updates = [];
+      const values = [];
+      let paramCount = 1;
 
       if (rolname !== undefined) {
-        request.input('rolname', sql.VarChar(50), rolname);
-        updates.push('rolname = @rolname');
-      }
-      if (afiliado !== undefined) {
-        request.input('afiliado', sql.Int, afiliado);
-        updates.push('afiliado = @afiliado');
+        updates.push(`rolname = $${paramCount}`);
+        values.push(rolname);
+        paramCount++;
       }
       if (estado !== undefined) {
-        request.input('estado', sql.Int, estado);
-        updates.push('estado = @estado');
+        updates.push(`estado = $${paramCount}`);
+        values.push(estado);
+        paramCount++;
       }
 
-      updates.push('updatedAt = GETDATE()');
+      // Agregar updatedat
+      updates.push(`updatedat = CURRENT_TIMESTAMP`);
 
-      await request.query(`
-        UPDATE cooperativa 
-        SET ${updates.join(', ')}
-        WHERE id_rol = @id
-      `);
+      if (updates.length > 0) {
+        values.push(id);
+        await query(
+          `UPDATE rol 
+           SET ${updates.join(', ')}
+           WHERE id_rol = $${paramCount}`,
+          values
+        );
+      }
 
-      const result = await pool.request()
-        .input('id', sql.Int, id)
-        .query('SELECT * FROM rol WHERE id_rol = @id');
+      const result = await query(
+        'SELECT * FROM rol WHERE id_rol = $1',
+        [id]
+      );
 
       res.json({
         success: true,
-        message: 'Cooperativa actualizada exitosamente',
-        data: result.recordset[0]
+        message: 'Rol actualizado exitosamente',
+        data: result.rows[0]
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // Eliminar cooperativa
+  // Eliminar rol
   async delete(req, res, next) {
     try {
       const { id } = req.params;
-      const pool = await getConnection();
 
       // Verificar que existe
-      const checkResult = await pool.request()
-        .input('id', sql.Int, id)
-        .query('SELECT id_rol FROM rol WHERE id_rol = @id');
+      const checkResult = await query(
+        'SELECT id_rol FROM rol WHERE id_rol = $1',
+        [id]
+      );
 
-      if (checkResult.recordset.length === 0) {
+      if (checkResult.rows.length === 0) {
         return res.status(404).json({
           success: false,
-          error: 'Cooperativa no encontrada'
+          error: 'Rol no encontrado'
         });
       }
 
-      await pool.request()
-        .input('id', sql.Int, id)
-        .query('DELETE FROM rol WHERE id_rol = @id');
+      // Verificar si hay usuarios usando este rol
+      const usuariosCheck = await query(
+        'SELECT id_usuario FROM usuario WHERE id_rol = $1 LIMIT 1',
+        [id]
+      );
+
+      if (usuariosCheck.rows.length > 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'No se puede eliminar el rol porque tiene usuarios asignados'
+        });
+      }
+
+      await query('DELETE FROM rol WHERE id_rol = $1', [id]);
 
       res.json({
         success: true,
-        message: 'Cooperativa eliminada exitosamente'
+        message: 'Rol eliminado exitosamente'
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // Obtener cooperativas activas
+  // Obtener roles activos
   async getActive(req, res, next) {
     try {
-      const pool = await getConnection();
-      const result = await pool.request()
-        .query('SELECT * FROM rol WHERE estado = 1 ORDER BY rolname');
+      const result = await query(
+        'SELECT * FROM rol WHERE estado = 1 ORDER BY rolname'
+      );
       
       res.json({
         success: true,
-        data: result.recordset,
-        count: result.recordset.length
+        data: result.rows,
+        count: result.rows.length
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Método adicional: Buscar roles por nombre
+  async searchByName(req, res, next) {
+    try {
+      const { nombre } = req.params;
+      const result = await query(
+        `SELECT * FROM rol 
+         WHERE rolname ILIKE $1 
+         ORDER BY rolname`,
+        [`%${nombre}%`]
+      );
+      
+      res.json({
+        success: true,
+        data: result.rows,
+        count: result.rows.length
       });
     } catch (error) {
       next(error);

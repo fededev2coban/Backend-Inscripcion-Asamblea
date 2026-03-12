@@ -1,41 +1,36 @@
-const { getConnection, sql } = require('../config/database');
+const { query } = require('../config/database');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 class AuthController {
-  // Login de usuario
   async login(req, res, next) {
     try {
       const { username, password } = req.body;
-      const pool = await getConnection();
 
-      // Buscar usuario
-      const result = await pool.request()
-        .input('username', sql.VarChar(50), username)
-        .query(`
-          SELECT 
-            u.id_usuario,
-            u.username,
-            u.password,
-            u.nombre_completo,
-            u.id_rol,
-            u.estado,
-            CAST(r.rolname AS VARCHAR(50)) as rolname
-          FROM usuario u
-          LEFT JOIN rol r ON u.id_rol = r.id_rol
-          WHERE u.username = @username
-        `);
+      // Buscar usuario (ADAPTADO A TU SCHEMA)
+      const result = await query(`
+        SELECT 
+          u.id_usuario,
+          u.username,
+          u.password,
+          u.nombre_completo,
+          u.id_rol,
+          u.estado,
+          r.rolname
+        FROM usuario u
+        LEFT JOIN rol r ON u.id_rol = r.id_rol
+        WHERE u.username = $1
+      `, [username]);
 
-      if (result.recordset.length === 0) {
+      if (result.rows.length === 0) {
         return res.status(401).json({
           success: false,
           error: 'Usuario o contraseña incorrectos'
         });
       }
 
-      const user = result.recordset[0];
+      const user = result.rows[0];
 
-      // Verificar estado del usuario
       if (user.estado !== 1) {
         return res.status(401).json({
           success: false,
@@ -43,7 +38,6 @@ class AuthController {
         });
       }
 
-      // Verificar contraseña
       const isValidPassword = await bcrypt.compare(password, user.password);
       if (!isValidPassword) {
         return res.status(401).json({
@@ -52,7 +46,6 @@ class AuthController {
         });
       }
 
-      // Generar token JWT
       const token = jwt.sign(
         {
           id: user.id_usuario,
@@ -81,7 +74,6 @@ class AuthController {
     }
   }
 
-  // Verificar token
   async verifyToken(req, res, next) {
     try {
       const user = req.user;
@@ -100,28 +92,25 @@ class AuthController {
     }
   }
 
-  // Cambiar contraseña
   async changePassword(req, res, next) {
     try {
       const { currentPassword, newPassword } = req.body;
       const userId = req.user.id;
-      const pool = await getConnection();
 
-      // Obtener usuario
-      const userResult = await pool.request()
-        .input('id', sql.Int, userId)
-        .query('SELECT password FROM usuario WHERE id_usuario = @id');
+      const userResult = await query(
+        'SELECT password FROM usuario WHERE id_usuario = $1',
+        [userId]
+      );
 
-      if (userResult.recordset.length === 0) {
+      if (userResult.rows.length === 0) {
         return res.status(404).json({
           success: false,
           error: 'Usuario no encontrado'
         });
       }
 
-      const user = userResult.recordset[0];
+      const user = userResult.rows[0];
 
-      // Verificar contraseña actual
       const isValidPassword = await bcrypt.compare(currentPassword, user.password);
       if (!isValidPassword) {
         return res.status(401).json({
@@ -130,14 +119,12 @@ class AuthController {
         });
       }
 
-      // Hash nueva contraseña
       const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-      // Actualizar contraseña
-      await pool.request()
-        .input('id', sql.Int, userId)
-        .input('password', sql.VarChar(255), hashedPassword)
-        .query('UPDATE usuario SET password = @password WHERE id_usuario = @id');
+      await query(
+        'UPDATE usuario SET password = $1, updatedat = CURRENT_TIMESTAMP WHERE id_usuario = $2',
+        [hashedPassword, userId]
+      );
 
       res.json({
         success: true,
