@@ -6,17 +6,15 @@ class RegistroPublicoController {
     try {
       const { link } = req.params;
       const { 
-        tipo_registro, // 'interno' o 'externo'
+        tipo_registro,
         nombres, 
         apellidos, 
         email, 
         dpi, 
         telefono,
-        // Para registro interno:
         id_cooperativa,
         id_comision,
         id_puesto,
-        // Para registro externo:
         institucion,
         puesto
       } = req.body;
@@ -48,7 +46,6 @@ class RegistroPublicoController {
       let nuevoPersona = false;
 
       if (personaResult.rows.length > 0) {
-        // Persona ya existe
         idPersona = personaResult.rows[0].id_persona;
         
         // Actualizar datos de la persona
@@ -63,7 +60,6 @@ class RegistroPublicoController {
           [nombres, apellidos, email || null, telefono || null, idPersona]
         );
       } else {
-        // Crear nueva persona
         nuevoPersona = true;
         const newPersona = await query(
           `INSERT INTO persona (nombres, apellidos, email, dpi, telefono, createdat, updatedat)
@@ -80,10 +76,8 @@ class RegistroPublicoController {
       let tipoRegistro;
 
       if (tipo_registro === 'interno') {
-        // REGISTRO INTERNO
-        
-        // Validar que no exista la misma combinación
-        const duplicadoInterno = await query(
+        // Buscar si ya existe este registro interno específico
+        const registroInternoExistente = await query(
           `SELECT id_interno 
            FROM registro_internos 
            WHERE id_persona = $1 
@@ -93,40 +87,36 @@ class RegistroPublicoController {
           [idPersona, id_cooperativa, id_puesto, id_comision]
         );
 
-        if (duplicadoInterno.rows.length > 0) {
-          return res.status(400).json({
-            success: false,
-            error: 'Ya estás registrado con esta cooperativa, comisión y puesto'
-          });
+        if (registroInternoExistente.rows.length > 0) {
+          // Ya existe este registro interno (misma persona, cooperativa, puesto, comisión)
+          idRegistro = registroInternoExistente.rows[0].id_interno;
+          
+          // Verificar si YA ESTÁ INSCRITO EN ESTE MISMO EVENTO
+          const yaInscritoEsteEvento = await query(
+            `SELECT id_registro_evento 
+             FROM registro_evento 
+             WHERE id_evento = $1 AND id_interno = $2`,
+            [evento.id_evento, idRegistro]
+          );
+
+          if (yaInscritoEsteEvento.rows.length > 0) {
+            return res.status(400).json({
+              success: false,
+              error: 'Ya estás inscrito en este evento'
+            });
+          }
+        } else {
+          // Crear nuevo registro interno
+          const nuevoInterno = await query(
+            `INSERT INTO registro_internos (id_persona, id_cooperativa, id_puesto, id_comision, createdat, updatedat)
+             VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+             RETURNING id_interno`,
+            [idPersona, id_cooperativa, id_puesto, id_comision]
+          );
+          idRegistro = nuevoInterno.rows[0].id_interno;
         }
 
-        // Crear registro interno
-        const nuevoInterno = await query(
-          `INSERT INTO registro_internos (id_persona, id_cooperativa, id_puesto, id_comision, createdat, updatedat)
-           VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-           RETURNING id_interno`,
-          [idPersona, id_cooperativa, id_puesto, id_comision]
-        );
-
-        idRegistro = nuevoInterno.rows[0].id_interno;
-        tipoRegistro = 'interno';
-
-        // Verificar si ya está inscrito al evento con este registro interno
-        const yaInscritoInterno = await query(
-          `SELECT id_registro_evento 
-           FROM registro_evento 
-           WHERE id_evento = $1 AND id_interno = $2`,
-          [evento.id_evento, idRegistro]
-        );
-
-        if (yaInscritoInterno.rows.length > 0) {
-          return res.status(400).json({
-            success: false,
-            error: 'Ya estás inscrito a este evento con este registro'
-          });
-        }
-
-        // Crear registro de evento
+        // Crear registro de evento (si llegamos aquí, es porque no está inscrito en este evento)
         await query(
           `INSERT INTO registro_evento (id_evento, id_interno, id_externo, createdat, updatedat)
            VALUES ($1, $2, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
@@ -134,10 +124,8 @@ class RegistroPublicoController {
         );
 
       } else if (tipo_registro === 'externo') {
-        // REGISTRO EXTERNO
-        
-        // Validar que no exista la misma combinación
-        const duplicadoExterno = await query(
+        // Buscar si ya existe este registro externo específico
+        const registroExternoExistente = await query(
           `SELECT id_externo 
            FROM registro_externo 
            WHERE id_persona = $1 
@@ -146,40 +134,36 @@ class RegistroPublicoController {
           [idPersona, institucion, puesto]
         );
 
-        if (duplicadoExterno.rows.length > 0) {
-          return res.status(400).json({
-            success: false,
-            error: 'Ya estás registrado con esta institución y puesto'
-          });
+        if (registroExternoExistente.rows.length > 0) {
+          // Ya existe este registro externo (misma persona, institución, puesto)
+          idRegistro = registroExternoExistente.rows[0].id_externo;
+          
+          // Verificar si YA ESTÁ INSCRITO EN ESTE MISMO EVENTO
+          const yaInscritoEsteEvento = await query(
+            `SELECT id_registro_evento 
+             FROM registro_evento 
+             WHERE id_evento = $1 AND id_externo = $2`,
+            [evento.id_evento, idRegistro]
+          );
+
+          if (yaInscritoEsteEvento.rows.length > 0) {
+            return res.status(400).json({
+              success: false,
+              error: 'Ya estás inscrito en este evento'
+            });
+          }
+        } else {
+          // Crear nuevo registro externo
+          const nuevoExterno = await query(
+            `INSERT INTO registro_externo (id_persona, institucion, puesto, createdat, updatedat)
+             VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+             RETURNING id_externo`,
+            [idPersona, institucion, puesto]
+          );
+          idRegistro = nuevoExterno.rows[0].id_externo;
         }
 
-        // Crear registro externo
-        const nuevoExterno = await query(
-          `INSERT INTO registro_externo (id_persona, institucion, puesto, createdat, updatedat)
-           VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-           RETURNING id_externo`,
-          [idPersona, institucion, puesto]
-        );
-
-        idRegistro = nuevoExterno.rows[0].id_externo;
-        tipoRegistro = 'externo';
-
-        // Verificar si ya está inscrito al evento con este registro externo
-        const yaInscritoExterno = await query(
-          `SELECT id_registro_evento 
-           FROM registro_evento 
-           WHERE id_evento = $1 AND id_externo = $2`,
-          [evento.id_evento, idRegistro]
-        );
-
-        if (yaInscritoExterno.rows.length > 0) {
-          return res.status(400).json({
-            success: false,
-            error: 'Ya estás inscrito a este evento con este registro'
-          });
-        }
-
-        // Crear registro de evento
+        // Crear registro de evento (si llegamos aquí, es porque no está inscrito en este evento)
         await query(
           `INSERT INTO registro_evento (id_evento, id_interno, id_externo, createdat, updatedat)
            VALUES ($1, NULL, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
@@ -197,7 +181,7 @@ class RegistroPublicoController {
         message: `¡Registro exitoso! Te has inscrito al evento "${evento.nombre_evento}"`,
         data: {
           nuevo_persona: nuevoPersona,
-          tipo: tipoRegistro,
+          tipo: tipo_registro,
           evento: evento.nombre_evento
         }
       });
