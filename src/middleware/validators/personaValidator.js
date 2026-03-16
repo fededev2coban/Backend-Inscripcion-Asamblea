@@ -20,14 +20,13 @@ const personaValidation = {
       .notEmpty().withMessage('Los apellidos son requeridos')
       .isLength({ max: 50 }).withMessage('Los apellidos no pueden exceder 50 caracteres'),
     body('email')
-      .optional()
-      .isEmail().withMessage('Email inválido')
+      .optional({ nullable: true, checkFalsy: true })
       .isLength({ max: 100 }).withMessage('El email no puede exceder 100 caracteres'),
     body('dpi')
       .notEmpty().withMessage('El DPI es requerido')
       .isInt().withMessage('El DPI debe ser un número entero'),
     body('telefono')
-      .optional()
+      .optional({ nullable: true, checkFalsy: true })
       .isInt().withMessage('El teléfono debe ser un número entero'),
     body('id_cooperativa')
       .optional()
