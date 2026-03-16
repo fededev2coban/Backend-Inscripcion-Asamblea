@@ -125,7 +125,7 @@ static _escribirTabla(doc, participantes) {
     });
   }
 
-static _escribirPieDePagina(doc) {
+  static _escribirPieDePagina(doc) {
     const range = doc.bufferedPageRange(); // Obtiene el total de páginas generadas
     
     for (let i = range.start; i < (range.start + range.count); i++) {
